@@ -102,3 +102,66 @@ export const ListInputSchema = z.object({
 });
 
 export type ListInput = z.infer<typeof ListInputSchema>;
+
+/** Input for generating a taste profile summary */
+export const TasteInputSchema = z.object({
+  username: z
+    .string()
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA", "BOTH"])
+    .default("BOTH")
+    .describe("Analyze anime list, manga list, or both"),
+});
+
+export type TasteInput = z.infer<typeof TasteInputSchema>;
+
+/** Input for personalized recommendations from the user's planning list */
+export const PickInputSchema = z.object({
+  username: z
+    .string()
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Recommend from anime or manga planning list"),
+  mood: z
+    .string()
+    .optional()
+    .describe(
+      'Freeform mood or vibe, e.g. "something dark", "chill and wholesome", "hype action"',
+    ),
+  maxEpisodes: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe("Filter out series longer than this episode count"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(15)
+    .default(5)
+    .describe("Number of recommendations to return (default 5, max 15)"),
+});
+
+export type PickInput = z.infer<typeof PickInputSchema>;
+
+/** Input for comparing taste profiles between two users */
+export const CompareInputSchema = z.object({
+  user1: z.string().describe("First AniList username"),
+  user2: z.string().describe("Second AniList username"),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Compare anime or manga taste"),
+});
+
+export type CompareInput = z.infer<typeof CompareInputSchema>;

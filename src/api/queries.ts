@@ -111,6 +111,25 @@ export const MEDIA_DETAILS_QUERY = `
   ${MEDIA_FRAGMENT}
 `;
 
+/** Discover top-rated titles by genre without a search term */
+export const DISCOVER_MEDIA_QUERY = `
+  query DiscoverMedia(
+    $type: MediaType
+    $genre_in: [String]
+    $page: Int
+    $perPage: Int
+    $sort: [MediaSort]
+  ) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { total }
+      media(type: $type, genre_in: $genre_in, sort: $sort) {
+        ...MediaFields
+      }
+    }
+  }
+  ${MEDIA_FRAGMENT}
+`;
+
 /** User's anime/manga list, grouped by status. Omit $status to get all lists. */
 export const USER_LIST_QUERY = `
   query UserMediaList(

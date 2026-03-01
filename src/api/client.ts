@@ -7,6 +7,7 @@
 
 import { LRUCache } from "lru-cache";
 import pRetry from "p-retry";
+import pThrottle from "p-throttle";
 
 const ANILIST_API_URL =
   process.env.ANILIST_API_URL || "https://graphql.anilist.co";
@@ -14,6 +15,9 @@ const ANILIST_API_URL =
 // Budget under the 90 req/min limit to leave headroom
 const RATE_LIMIT_PER_MINUTE = 85;
 const MAX_RETRIES = 3;
+
+// Hard timeout per fetch attempt (retries get their own timeout)
+const FETCH_TIMEOUT_MS = 15_000;
 
 /** Per-category TTLs for the query cache */
 export const CACHE_TTLS = {
@@ -26,56 +30,11 @@ export const CACHE_TTLS = {
 
 export type CacheCategory = keyof typeof CACHE_TTLS;
 
-/**
- * Token Bucket Rate Limiter
- *
- * Avoids the boundary-reset problem of simple per-minute counters.
- * Token bucket spreads capacity evenly by refilling at a constant rate.
- */
-class TokenBucket {
-  private tokens: number;
-  private lastRefill: number;
-  private readonly maxTokens: number;
-  private readonly refillRate: number; // tokens per ms
-
-  constructor(tokensPerMinute: number) {
-    this.maxTokens = tokensPerMinute;
-    this.tokens = tokensPerMinute;
-    this.lastRefill = Date.now();
-    this.refillRate = tokensPerMinute / 60_000; // convert to per-ms
-  }
-
-  /** Wait for a token to become available, then consume it */
-  async consume(): Promise<void> {
-    this.refill();
-
-    // Token available - use it immediately
-    if (this.tokens >= 1) {
-      this.tokens -= 1;
-      return;
-    }
-
-    // No tokens - wait until one replenishes
-    const waitMs = Math.ceil((1 - this.tokens) / this.refillRate);
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
-
-    // Recalculate after sleeping since time has passed
-    this.refill();
-    this.tokens = Math.max(0, this.tokens - 1);
-  }
-
-  /** Add tokens based on elapsed time since last refill */
-  private refill(): void {
-    const now = Date.now();
-    const elapsed = now - this.lastRefill;
-    // Add fractional tokens proportional to elapsed time, capped at max
-    this.tokens = Math.min(
-      this.maxTokens,
-      this.tokens + elapsed * this.refillRate,
-    );
-    this.lastRefill = now;
-  }
-}
+// 85 req/60s, excess calls queue automatically
+const rateLimit = pThrottle({
+  limit: RATE_LIMIT_PER_MINUTE,
+  interval: 60_000,
+})(() => {});
 
 // === In-Memory Cache ===
 
@@ -109,7 +68,6 @@ export interface QueryOptions {
 
 /** Manages authenticated requests to the AniList GraphQL API */
 class AniListClient {
-  private rateLimiter = new TokenBucket(RATE_LIMIT_PER_MINUTE);
   private token: string | undefined;
 
   constructor() {
@@ -127,7 +85,7 @@ class AniListClient {
 
     // Cache-through: return cached result or fetch, store, and return
     if (cacheCategory) {
-      // Same query with different variables = different cache entry
+      // Key on query + variables
       const cacheKey = `${query}::${JSON.stringify(variables)}`;
       const cached = queryCache.get(cacheKey);
       if (cached !== undefined) return cached as T;
@@ -156,7 +114,7 @@ class AniListClient {
     return pRetry(
       async () => {
         // Each attempt (including retries) counts toward the rate limit
-        await this.rateLimiter.consume();
+        await rateLimit();
         return this.makeRequest<T>(query, variables);
       },
       {
@@ -194,6 +152,7 @@ class AniListClient {
         method: "POST",
         headers,
         body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
     } catch (error) {
       throw new AniListApiError(
@@ -203,9 +162,9 @@ class AniListClient {
       );
     }
 
-    // Map HTTP errors to AniListApiError with appropriate retryability
+    // Map HTTP errors to retryable/non-retryable
     if (!response.ok) {
-      // Read error body for context, but don't mask the HTTP error if reading fails
+      // Read error body for context
       const body = await response.text().catch(() => "");
 
       if (response.status === 429) {
@@ -233,7 +192,7 @@ class AniListClient {
       );
     }
 
-    // AniList returns { data, errors } - both can be present simultaneously
+    // AniList can return both data and errors
     const json = (await response.json()) as {
       data?: T;
       errors?: Array<{ message: string; status?: number }>;
@@ -241,7 +200,7 @@ class AniListClient {
 
     // GraphQL can return 200 OK with errors in the body
     if (json.errors?.length) {
-      // Use the error's own status if present, otherwise fall back to HTTP status
+      // Prefer GraphQL error status over HTTP status
       const firstError = json.errors[0];
       const status = firstError.status ?? response.status;
       throw new AniListApiError(
@@ -251,7 +210,7 @@ class AniListClient {
       );
     }
 
-    // Shouldn't happen with a well-formed query, but guard against it
+    // Guard against empty response
     if (!json.data) {
       throw new AniListApiError(
         "AniList returned an empty response. Try again.",

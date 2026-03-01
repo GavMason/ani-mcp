@@ -1,11 +1,14 @@
 /** User list tools: fetch and display a user's anime/manga list. */
 
 import type { FastMCP } from "fastmcp";
-import { anilistClient } from "../api/client.js";
-import { USER_LIST_QUERY } from "../api/queries.js";
 import { ListInputSchema } from "../schemas.js";
-import type { UserListResponse, AniListMediaListEntry } from "../types.js";
-import { getTitle, getDefaultUsername, formatToolError } from "../utils.js";
+import type { AniListMediaListEntry } from "../types.js";
+import {
+  getTitle,
+  getDefaultUsername,
+  formatToolError,
+  fetchList,
+} from "../utils.js";
 
 // Map user-friendly sort names to AniList's internal enum values
 const SORT_MAP: Record<string, string[]> = {
@@ -29,28 +32,9 @@ export function registerListTools(server: FastMCP): void {
       try {
         const username = getDefaultUsername(args.username);
 
-        const variables: Record<string, unknown> = {
-          userName: username,
-          type: args.type,
-          sort: SORT_MAP[args.sort] ?? SORT_MAP.UPDATED, // fallback to UPDATED if sort key is unknown
-        };
-
-        // Omitting status returns all lists
-        if (args.status !== "ALL") {
-          variables.status = args.status;
-        }
-
-        const data = await anilistClient.query<UserListResponse>(
-          USER_LIST_QUERY,
-          variables,
-          { cache: "list" },
-        );
-
-        // Flatten across status groups into a single sorted list
-        const allEntries: AniListMediaListEntry[] = [];
-        for (const list of data.MediaListCollection.lists) {
-          allEntries.push(...list.entries);
-        }
+        const sort = SORT_MAP[args.sort] ?? SORT_MAP.UPDATED;
+        const status = args.status !== "ALL" ? args.status : undefined;
+        const allEntries = await fetchList(username, args.type, status, sort);
 
         if (!allEntries.length) {
           if (args.status === "ALL") {
@@ -59,7 +43,7 @@ export function registerListTools(server: FastMCP): void {
           return `${username} has no ${args.type.toLowerCase()} with status "${args.status}".`;
         }
 
-        // Re-sort after merging. AniList only sorts within each status group.
+        // Re-sort after merging; AniList only sorts within each status group
         sortEntries(allEntries, args.sort);
 
         const limited = allEntries.slice(0, args.limit);
@@ -91,7 +75,7 @@ function formatListEntry(entry: AniListMediaListEntry, index: number): string {
   const title = getTitle(media.title);
   const format = media.format ?? "?";
 
-  // Build progress string (e.g. "5/12 ep" or "30/? ch"). Uses episodes for anime, chapters for manga.
+  // Progress string (e.g. "5/12 ep" or "30/? ch")
   const total = media.episodes ?? media.chapters ?? "?";
   const unit = media.episodes !== null ? "ep" : "ch";
   const progress = `${entry.progress}/${total} ${unit}`;

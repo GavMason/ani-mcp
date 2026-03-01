@@ -4,6 +4,19 @@
 import { FastMCP } from "fastmcp";
 import { registerSearchTools } from "./tools/search.js";
 import { registerListTools } from "./tools/lists.js";
+import { registerRecommendTools } from "./tools/recommend.js";
+
+// Both vars are optional - warn on missing so operators know what's available
+if (!process.env.ANILIST_USERNAME) {
+  console.warn(
+    "ANILIST_USERNAME not set - tools will require a username argument.",
+  );
+}
+if (!process.env.ANILIST_TOKEN) {
+  console.warn(
+    "ANILIST_TOKEN not set - authenticated features unavailable.",
+  );
+}
 
 const server = new FastMCP({
   name: "ani-mcp",
@@ -12,5 +25,6 @@ const server = new FastMCP({
 
 registerSearchTools(server);
 registerListTools(server);
+registerRecommendTools(server);
 
 server.start({ transportType: "stdio" });

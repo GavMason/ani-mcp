@@ -17,7 +17,7 @@ import { getTitle, truncateDescription, formatToolError } from "../utils.js";
 function formatMediaSummary(media: AniListMedia): string {
   const title = getTitle(media.title);
   const format = media.format ?? "Unknown format";
-  // Prefer season year (e.g. "Winter 2024"), fall back to start date for non-seasonal media
+  // Prefer season year, fall back to start date
   const year = media.seasonYear ?? media.startDate?.year ?? "?";
   const score = media.meanScore ? `${media.meanScore}/100` : "No score";
   const genres = media.genres?.length
@@ -45,7 +45,7 @@ function formatMediaSummary(media: AniListMedia): string {
   return lines.join("\n");
 }
 
-// Default to popularity so broad queries return well-known titles first
+// Default to popularity for broad queries
 const SEARCH_SORT = ["POPULARITY_DESC"] as const;
 
 // === Tool Registration ===
@@ -70,7 +70,7 @@ export function registerSearchTools(server: FastMCP): void {
           sort: SEARCH_SORT,
         };
 
-        // Only include optional filters. AniList errors on null/undefined values.
+        // Only include set filters
         if (args.genre) variables.genre = [args.genre];
         if (args.year) variables.year = args.year;
         if (args.format) variables.format = args.format;
@@ -126,10 +126,9 @@ export function registerSearchTools(server: FastMCP): void {
           { cache: "media" },
         );
 
-        // Short alias since it's used heavily in the template literals below
         const m = data.Media;
         const title = getTitle(m.title);
-        // Show romaji in parens when it differs from the English title (e.g. "Attack on Titan (Shingeki no Kyojin)")
+        // Show romaji in parens when it differs from English
         const altTitle =
           m.title.english &&
           m.title.romaji &&
@@ -147,7 +146,7 @@ export function registerSearchTools(server: FastMCP): void {
         if (m.episodes) lines.push(`Episodes: ${m.episodes}`);
         if (m.chapters)
           lines.push(`Chapters: ${m.chapters} (${m.volumes ?? "?"} volumes)`);
-        // Seasonal anime (e.g. "FALL 2023"), otherwise just the year for movies/OVAs
+        // Seasonal anime (e.g. "FALL 2023"), otherwise just the year
         if (m.season && m.seasonYear)
           lines.push(`Season: ${m.season} ${m.seasonYear}`);
         else if (m.startDate?.year) lines.push(`Year: ${m.startDate.year}`);
@@ -163,7 +162,7 @@ export function registerSearchTools(server: FastMCP): void {
           );
         }
 
-        // AniList returns enums like "LIGHT_NOVEL", convert to readable format
+        // Convert enums like "LIGHT_NOVEL" to readable format
         if (m.source) lines.push(`Source: ${m.source.replace(/_/g, " ")}`);
         lines.push(`Genres: ${m.genres?.join(", ") || "None"}`);
 
@@ -177,7 +176,7 @@ export function registerSearchTools(server: FastMCP): void {
 
         lines.push("", "Synopsis:", truncateDescription(m.description));
 
-        // Related works, capped at 5 to keep output concise
+        // Related works, capped at 5
         if (m.relations?.edges?.length) {
           lines.push("", "Related:");
           for (const edge of m.relations.edges.slice(0, 5)) {
