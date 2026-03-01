@@ -1,19 +1,21 @@
 # ani-mcp
 
-A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anilist.co) that gets your anime/manga taste - not just API calls.
+A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anilist.co) that understands your anime and manga taste - not just raw API calls.
 
 ## What makes this different
 
-Most AniList integrations mirror the API 1:1. ani-mcp gives your AI assistant actual understanding of your watching habits:
+Most AniList integrations mirror the API 1:1. ani-mcp adds an intelligence layer on top:
 
-- **anilist_pick** - "What should I watch next?" based on your taste profile and mood
-- **anilist_taste** - Natural language summary of your anime/manga preferences
-- **anilist_compare** - Compare taste between two users
-- **anilist_wrapped** - Your year-in-review stats
+- **Taste profiling** - builds a model of your preferences from your completed list
+- **Personalized picks** - "what should I watch next?" based on your taste and mood
+- **Compatibility** - compare taste between two users
+- **Year in review** - your watching/reading stats wrapped up
 
-Plus the essentials: search, details, seasonal browsing, list management, and community recommendations.
+Plus the essentials: search, details, trending, seasonal browsing, list management, and community recommendations.
 
 ## Install
+
+Add to your MCP client config (e.g. `mcp.json`, `claude_desktop_config.json`, Cursor settings, etc.):
 
 ```json
 {
@@ -29,20 +31,62 @@ Plus the essentials: search, details, seasonal browsing, list management, and co
 }
 ```
 
+Works with any MCP-compatible client.
+
+## Environment Variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `ANILIST_USERNAME` | No | Default username for list and stats tools. Can also pass per-call. |
+| `ANILIST_TOKEN` | No | AniList OAuth token. Enables authenticated queries. |
+| `DEBUG` | No | Set to `true` for debug logging to stderr. |
+
 ## Tools
 
+### Search & Discovery
+
 | Tool | Description |
-| ------ | ------------- |
-| `anilist_search` | Search anime/manga by title with filters |
-| `anilist_details` | Full details for a specific anime/manga |
+| --- | --- |
+| `anilist_search` | Search anime/manga by title with genre, year, and format filters |
+| `anilist_details` | Full details, relations, and recommendations for a title |
 | `anilist_seasonal` | Browse a season's anime lineup |
-| `anilist_list` | Get a user's anime/manga list |
-| `anilist_stats` | User watching/reading statistics |
-| `anilist_pick` | Personalized "what to watch next" recommendations |
-| `anilist_taste` | Generate your taste profile |
-| `anilist_compare` | Compare taste between two users |
+| `anilist_trending` | What's trending on AniList right now |
+| `anilist_genres` | Browse top titles in a genre with optional filters |
+| `anilist_recommendations` | Community recommendations for a specific title |
+
+### Lists & Stats
+
+| Tool | Description |
+| --- | --- |
+| `anilist_list` | A user's anime/manga list, filtered by status |
+| `anilist_stats` | Watching/reading statistics, top genres, score distribution |
+
+### Intelligence
+
+| Tool | Description |
+| --- | --- |
+| `anilist_taste` | Generate a taste profile from your completed list |
+| `anilist_pick` | Personalized "what to watch next" based on taste and mood |
+| `anilist_compare` | Compare taste compatibility between two users |
 | `anilist_wrapped` | Year-in-review summary |
-| `anilist_recommendations` | Community recs for a specific title |
+
+### Info
+
+| Tool | Description |
+| --- | --- |
+| `anilist_staff` | Staff credits and voice actors for a title |
+| `anilist_schedule` | Airing schedule and next episode countdown |
+| `anilist_characters` | Search characters by name with appearances and VAs |
+
+## Build from Source
+
+```sh
+git clone https://github.com/GavMason/ani-mcp.git
+cd ani-mcp
+npm install
+npm run build
+npm test
+```
 
 ## License
 
