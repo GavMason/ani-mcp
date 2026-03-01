@@ -8,6 +8,8 @@
 import { LRUCache } from "lru-cache";
 import pRetry, { AbortError } from "p-retry";
 import pThrottle from "p-throttle";
+import { USER_LIST_QUERY } from "./queries.js";
+import type { AniListMediaListEntry, UserListResponse } from "../types.js";
 
 const ANILIST_API_URL =
   process.env.ANILIST_API_URL || "https://graphql.anilist.co";
@@ -18,6 +20,22 @@ const MAX_RETRIES = 3;
 
 // Hard timeout per fetch attempt (retries get their own timeout)
 const FETCH_TIMEOUT_MS = 15_000;
+
+// === Logging ===
+
+const DEBUG = process.env.DEBUG === "true" || process.env.DEBUG === "1";
+
+// Extract query operation name (e.g. "SearchMedia" from "query SearchMedia(...)")
+function queryName(query: string): string {
+  const match = query.match(/(?:query|mutation)\s+(\w+)/);
+  return match ? match[1] : "unknown";
+}
+
+function log(event: string, detail?: string): void {
+  if (!DEBUG) return;
+  const msg = detail ? `[ani-mcp] ${event}: ${detail}` : `[ani-mcp] ${event}`;
+  console.error(msg);
+}
 
 /** Per-category TTLs for the query cache */
 export const CACHE_TTLS = {
@@ -83,13 +101,18 @@ class AniListClient {
   ): Promise<T> {
     const cacheCategory = options.cache ?? null;
 
+    const name = queryName(query);
+
     // Cache-through: return cached result or fetch, store, and return
     if (cacheCategory) {
-      // Key on query + variables
       const cacheKey = `${query}::${JSON.stringify(variables)}`;
       const cached = queryCache.get(cacheKey);
-      if (cached !== undefined) return cached as T;
+      if (cached !== undefined) {
+        log("cache-hit", name);
+        return cached as T;
+      }
 
+      log("cache-miss", name);
       const data = await this.executeWithRetry<T>(query, variables);
       queryCache.set(cacheKey, data as Record<string, unknown>, {
         ttl: CACHE_TTLS[cacheCategory],
@@ -99,6 +122,31 @@ class AniListClient {
 
     // No cache category - skip caching entirely
     return this.executeWithRetry<T>(query, variables);
+  }
+
+  /** Fetch a user's media list, flattened into a single array */
+  async fetchList(
+    username: string,
+    type: string,
+    status?: string,
+    sort?: string[],
+  ): Promise<AniListMediaListEntry[]> {
+    const variables: Record<string, unknown> = { userName: username, type };
+    if (status) variables.status = status;
+    if (sort) variables.sort = sort;
+
+    const data = await this.query<UserListResponse>(
+      USER_LIST_QUERY,
+      variables,
+      { cache: "list" },
+    );
+
+    // Flatten across status groups
+    const entries: AniListMediaListEntry[] = [];
+    for (const list of data.MediaListCollection.lists) {
+      entries.push(...list.entries);
+    }
+    return entries;
   }
 
   /** Invalidate the entire query cache */
@@ -111,13 +159,19 @@ class AniListClient {
     query: string,
     variables: Record<string, unknown>,
   ): Promise<T> {
+    const name = queryName(query);
+    log("fetch", name);
     return pRetry(
       async () => {
-        // Each attempt (including retries) counts toward the rate limit
         await rateLimit();
         return this.makeRequest<T>(query, variables);
       },
-      { retries: MAX_RETRIES },
+      {
+        retries: MAX_RETRIES,
+        onFailedAttempt: (err) => {
+          log("retry", `${name} attempt ${err.attemptNumber}/${MAX_RETRIES + 1}`);
+        },
+      },
     );
   }
 
@@ -146,8 +200,10 @@ class AniListClient {
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log("network-error", msg);
       throw new AniListApiError(
-        `Network error connecting to AniList: ${error instanceof Error ? error.message : String(error)}`,
+        `Network error connecting to AniList: ${msg}`,
         undefined,
         true,
       );
@@ -159,6 +215,14 @@ class AniListClient {
       const body = await response.text().catch(() => "");
 
       if (response.status === 429) {
+        log("rate-limit", `429 from AniList`);
+        const retryAfter = response.headers.get("Retry-After");
+        if (retryAfter) {
+          const delaySec = parseInt(retryAfter, 10);
+          if (delaySec > 0) {
+            await new Promise((r) => setTimeout(r, delaySec * 1000));
+          }
+        }
         throw new AniListApiError(
           "AniList rate limit hit. The server will retry automatically.",
           429,

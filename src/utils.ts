@@ -1,12 +1,7 @@
 /** Formatting and resolution helpers. */
 
-import { anilistClient } from "./api/client.js";
-import { USER_LIST_QUERY } from "./api/queries.js";
-import type {
-  AniListMedia,
-  AniListMediaListEntry,
-  UserListResponse,
-} from "./types.js";
+import { UserError } from "fastmcp";
+import type { AniListMedia } from "./types.js";
 
 /** Best available title: English -> Romaji -> Native */
 export function getTitle(title: AniListMedia["title"]): string {
@@ -43,37 +38,13 @@ export function getDefaultUsername(provided?: string): string {
   return username;
 }
 
-/** Fetch a user's list, flattened into a single array */
-export async function fetchList(
-  username: string,
-  type: string,
-  status?: string,
-  sort?: string[],
-): Promise<AniListMediaListEntry[]> {
-  const variables: Record<string, unknown> = { userName: username, type };
-  if (status) variables.status = status;
-  if (sort) variables.sort = sort;
 
-  const data = await anilistClient.query<UserListResponse>(
-    USER_LIST_QUERY,
-    variables,
-    { cache: "list" },
-  );
-
-  // Flatten across status groups
-  const entries: AniListMediaListEntry[] = [];
-  for (const list of data.MediaListCollection.lists) {
-    entries.push(...list.entries);
-  }
-  return entries;
-}
-
-/** Convert an error into a user-friendly message for the MCP response */
-export function formatToolError(error: unknown, action: string): string {
+/** Re-throw as a UserError so MCP clients see isError: true */
+export function throwToolError(error: unknown, action: string): never {
   if (error instanceof Error) {
-    return `Error ${action}: ${error.message}`;
+    throw new UserError(`Error ${action}: ${error.message}`);
   }
-  return `Unexpected error while ${action}. Please try again.`;
+  throw new UserError(`Unexpected error while ${action}. Please try again.`);
 }
 
 /** Format a media entry as a compact multi-line summary */

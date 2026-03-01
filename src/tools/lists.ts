@@ -12,8 +12,7 @@ import type {
 import {
   getTitle,
   getDefaultUsername,
-  formatToolError,
-  fetchList,
+  throwToolError,
 } from "../utils.js";
 
 // Map user-friendly sort names to AniList's internal enum values
@@ -40,7 +39,7 @@ export function registerListTools(server: FastMCP): void {
 
         const sort = SORT_MAP[args.sort] ?? SORT_MAP.UPDATED;
         const status = args.status !== "ALL" ? args.status : undefined;
-        const allEntries = await fetchList(username, args.type, status, sort);
+        const allEntries = await anilistClient.fetchList(username, args.type, status, sort);
 
         if (!allEntries.length) {
           if (args.status === "ALL") {
@@ -69,7 +68,7 @@ export function registerListTools(server: FastMCP): void {
 
         return header + formatted.join("\n\n");
       } catch (error) {
-        return formatToolError(error, "fetching list");
+        return throwToolError(error, "fetching list");
       }
     },
   });
@@ -114,7 +113,7 @@ export function registerListTools(server: FastMCP): void {
 
         return lines.join("\n");
       } catch (error) {
-        return formatToolError(error, "fetching stats");
+        return throwToolError(error, "fetching stats");
       }
     },
   });

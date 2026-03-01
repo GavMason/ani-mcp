@@ -17,8 +17,7 @@ import type {
 import {
   getTitle,
   getDefaultUsername,
-  formatToolError,
-  fetchList,
+  throwToolError,
 } from "../utils.js";
 import {
   buildTasteProfile,
@@ -70,14 +69,14 @@ async function profileForUser(
 ): Promise<{ profile: TasteProfile; entries: AniListMediaListEntry[] }> {
   if (type === "BOTH") {
     const [anime, manga] = await Promise.all([
-      fetchList(username, "ANIME", "COMPLETED"),
-      fetchList(username, "MANGA", "COMPLETED"),
+      anilistClient.fetchList(username, "ANIME", "COMPLETED"),
+      anilistClient.fetchList(username, "MANGA", "COMPLETED"),
     ]);
     const all = [...anime, ...manga];
     return { profile: buildTasteProfile(all), entries: all };
   }
 
-  const entries = await fetchList(username, type, "COMPLETED");
+  const entries = await anilistClient.fetchList(username, type, "COMPLETED");
   return { profile: buildTasteProfile(entries), entries };
 }
 
@@ -141,7 +140,7 @@ export function registerRecommendTools(server: FastMCP): void {
 
         return lines.join("\n");
       } catch (error) {
-        return formatToolError(error, "building taste profile");
+        return throwToolError(error, "building taste profile");
       }
     },
   });
@@ -161,8 +160,8 @@ export function registerRecommendTools(server: FastMCP): void {
 
         // Two API calls: completed list for taste, planning list for candidates
         const [completed, planning] = await Promise.all([
-          fetchList(username, args.type, "COMPLETED"),
-          fetchList(username, args.type, "PLANNING"),
+          anilistClient.fetchList(username, args.type, "COMPLETED"),
+          anilistClient.fetchList(username, args.type, "PLANNING"),
         ]);
 
         const profile = buildTasteProfile(completed);
@@ -263,7 +262,7 @@ export function registerRecommendTools(server: FastMCP): void {
 
         return lines.join("\n");
       } catch (error) {
-        return formatToolError(error, "picking recommendations");
+        return throwToolError(error, "picking recommendations");
       }
     },
   });
@@ -282,8 +281,8 @@ export function registerRecommendTools(server: FastMCP): void {
       try {
         // Fetch both users' completed lists in parallel
         const [entries1, entries2] = await Promise.all([
-          fetchList(args.user1, args.type, "COMPLETED"),
-          fetchList(args.user2, args.type, "COMPLETED"),
+          anilistClient.fetchList(args.user1, args.type, "COMPLETED"),
+          anilistClient.fetchList(args.user2, args.type, "COMPLETED"),
         ]);
 
         if (entries1.length === 0) {
@@ -375,7 +374,7 @@ export function registerRecommendTools(server: FastMCP): void {
         }
 
         // Genre divergences
-        const divergences = computeGenreDivergences(profile1, profile2);
+        const divergences = computeGenreDivergences(profile1, profile2, args.user1, args.user2);
         if (divergences.length > 0) {
           lines.push("Genre Differences:");
           for (const d of divergences) {
@@ -405,7 +404,7 @@ export function registerRecommendTools(server: FastMCP): void {
 
         return lines.join("\n");
       } catch (error) {
-        return formatToolError(error, "comparing users");
+        return throwToolError(error, "comparing users");
       }
     },
   });
@@ -431,7 +430,7 @@ export function registerRecommendTools(server: FastMCP): void {
             : [args.type as "ANIME" | "MANGA"];
 
         const lists = await Promise.all(
-          types.map((type) => fetchList(username, type, "COMPLETED")),
+          types.map((type) => anilistClient.fetchList(username, type, "COMPLETED")),
         );
         const allEntries = lists.flat();
 
@@ -539,7 +538,7 @@ export function registerRecommendTools(server: FastMCP): void {
 
         return lines.join("\n");
       } catch (error) {
-        return formatToolError(error, "generating year summary");
+        return throwToolError(error, "generating year summary");
       }
     },
   });

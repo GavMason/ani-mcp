@@ -54,6 +54,8 @@ export function computeCompatibility(
 export function computeGenreDivergences(
   p1: TasteProfile,
   p2: TasteProfile,
+  name1 = "User 1",
+  name2 = "User 2",
 ): string[] {
   const genres1 = new Map(p1.genres.map((g) => [g.name, g]));
   const genres2 = new Map(p2.genres.map((g) => [g.name, g]));
@@ -70,13 +72,13 @@ export function computeGenreDivergences(
       divergences.push({
         genre,
         diff: 10,
-        desc: `User 1 loves ${genre}, User 2 doesn't`,
+        desc: `${name1} loves ${genre}, ${name2} doesn't`,
       });
     } else if (rank2 >= 0 && rank2 < 5 && (rank1 < 0 || rank1 > 10)) {
       divergences.push({
         genre,
         diff: 10,
-        desc: `User 2 loves ${genre}, User 1 doesn't`,
+        desc: `${name2} loves ${genre}, ${name1} doesn't`,
       });
     }
   }

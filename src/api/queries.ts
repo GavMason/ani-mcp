@@ -52,6 +52,7 @@ export const SEARCH_MEDIA_QUERY = `
     $genre: [String]
     $year: Int
     $format: MediaFormat
+    $isAdult: Boolean
     $page: Int
     $perPage: Int
     $sort: [MediaSort]
@@ -67,8 +68,9 @@ export const SEARCH_MEDIA_QUERY = `
         search: $search
         type: $type
         genre_in: $genre
-        seasonYear: $year
+        startDate_year: $year
         format: $format
+        isAdult: $isAdult
         sort: $sort
       ) {
         ...MediaFields
@@ -138,6 +140,7 @@ export const SEASONAL_MEDIA_QUERY = `
     $season: MediaSeason
     $seasonYear: Int
     $type: MediaType
+    $isAdult: Boolean
     $sort: [MediaSort]
     $page: Int
     $perPage: Int
@@ -148,6 +151,7 @@ export const SEASONAL_MEDIA_QUERY = `
         season: $season
         seasonYear: $seasonYear
         type: $type
+        isAdult: $isAdult
         sort: $sort
       ) {
         ...MediaFields

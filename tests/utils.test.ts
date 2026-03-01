@@ -5,7 +5,7 @@ import {
   getTitle,
   truncateDescription,
   getDefaultUsername,
-  formatToolError,
+  throwToolError,
   formatMediaSummary,
 } from "../src/utils.js";
 import { makeMedia } from "./fixtures.js";
@@ -106,22 +106,22 @@ describe("getDefaultUsername", () => {
   });
 });
 
-describe("formatToolError", () => {
-  it("formats Error instances with message", () => {
+describe("throwToolError", () => {
+  it("throws UserError with message for Error instances", () => {
     const err = new Error("something broke");
-    expect(formatToolError(err, "searching")).toBe(
+    expect(() => throwToolError(err, "searching")).toThrow(
       "Error searching: something broke",
     );
   });
 
-  it("formats non-Error values with generic message", () => {
-    expect(formatToolError("string error", "fetching")).toBe(
+  it("throws UserError with generic message for non-Error values", () => {
+    expect(() => throwToolError("string error", "fetching")).toThrow(
       "Unexpected error while fetching. Please try again.",
     );
   });
 
-  it("formats null with generic message", () => {
-    expect(formatToolError(null, "loading")).toBe(
+  it("throws UserError with generic message for null", () => {
+    expect(() => throwToolError(null, "loading")).toThrow(
       "Unexpected error while loading. Please try again.",
     );
   });

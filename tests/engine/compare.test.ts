@@ -81,9 +81,11 @@ describe("computeGenreDivergences", () => {
 
     const p1 = buildTasteProfile(entries1);
     const p2 = buildTasteProfile(entries2);
-    const divergences = computeGenreDivergences(p1, p2);
+    const divergences = computeGenreDivergences(p1, p2, "Alice", "Bob");
 
     expect(divergences.some((d) => d.includes("Horror"))).toBe(true);
+    expect(divergences.some((d) => d.includes("Alice"))).toBe(true);
+    expect(divergences.some((d) => d.includes("Bob"))).toBe(true);
   });
 
   it("returns empty when both users share similar genre rankings", () => {

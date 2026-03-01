@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** ani-mcp - AniList MCP Server */
 
+import "dotenv/config";
 import { FastMCP } from "fastmcp";
 import { registerSearchTools } from "./tools/search.js";
 import { registerListTools } from "./tools/lists.js";

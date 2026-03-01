@@ -22,7 +22,7 @@ import type {
 import {
   getTitle,
   truncateDescription,
-  formatToolError,
+  throwToolError,
   formatMediaSummary,
 } from "../utils.js";
 
@@ -55,6 +55,7 @@ export function registerSearchTools(server: FastMCP): void {
         if (args.genre) variables.genre = [args.genre];
         if (args.year) variables.year = args.year;
         if (args.format) variables.format = args.format;
+        if (!args.isAdult) variables.isAdult = false;
 
         const data = await anilistClient.query<SearchMediaResponse>(
           SEARCH_MEDIA_QUERY,
@@ -81,7 +82,7 @@ export function registerSearchTools(server: FastMCP): void {
 
         return header + formatted.join("\n\n");
       } catch (error) {
-        return formatToolError(error, "searching");
+        return throwToolError(error, "searching");
       }
     },
   });
@@ -190,7 +191,7 @@ export function registerSearchTools(server: FastMCP): void {
 
         return lines.join("\n");
       } catch (error) {
-        return formatToolError(error, "looking up details");
+        return throwToolError(error, "looking up details");
       }
     },
   });
@@ -220,6 +221,7 @@ export function registerSearchTools(server: FastMCP): void {
             season,
             seasonYear: year,
             type: "ANIME",
+            isAdult: args.isAdult ? undefined : false,
             sort: sortMap[args.sort] ?? sortMap.POPULARITY,
             page: 1,
             perPage: args.limit,
@@ -245,7 +247,7 @@ export function registerSearchTools(server: FastMCP): void {
 
         return header + formatted.join("\n\n");
       } catch (error) {
-        return formatToolError(error, "browsing seasonal anime");
+        return throwToolError(error, "browsing seasonal anime");
       }
     },
   });
@@ -304,7 +306,7 @@ export function registerSearchTools(server: FastMCP): void {
 
         return lines.join("\n");
       } catch (error) {
-        return formatToolError(error, "fetching recommendations");
+        return throwToolError(error, "fetching recommendations");
       }
     },
   });

@@ -2,6 +2,13 @@
 
 import { z } from "zod";
 
+// AniList usernames: 2-20 chars, alphanumeric + underscores
+const usernameSchema = z
+  .string()
+  .min(2)
+  .max(20)
+  .regex(/^[a-zA-Z0-9_]+$/, "Letters, numbers, and underscores only");
+
 /** Input for searching anime or manga by title and filters */
 export const SearchInputSchema = z.object({
   query: z
@@ -36,6 +43,10 @@ export const SearchInputSchema = z.object({
     ])
     .optional()
     .describe("Filter by format (TV, MOVIE, etc.)"),
+  isAdult: z
+    .boolean()
+    .default(false)
+    .describe("Include adult (18+) content in results"),
   // Capped at 25. Sending 100 results to an LLM wastes context window.
   limit: z
     .number()
@@ -74,8 +85,7 @@ export type DetailsInput = z.infer<typeof DetailsInputSchema>;
 
 /** Input for fetching a user's anime or manga list */
 export const ListInputSchema = z.object({
-  username: z
-    .string()
+  username: usernameSchema
     .optional()
     .describe(
       "AniList username. Falls back to configured default if not provided.",
@@ -105,8 +115,7 @@ export type ListInput = z.infer<typeof ListInputSchema>;
 
 /** Input for generating a taste profile summary */
 export const TasteInputSchema = z.object({
-  username: z
-    .string()
+  username: usernameSchema
     .optional()
     .describe(
       "AniList username. Falls back to configured default if not provided.",
@@ -121,8 +130,7 @@ export type TasteInput = z.infer<typeof TasteInputSchema>;
 
 /** Input for personalized recommendations from the user's planning list */
 export const PickInputSchema = z.object({
-  username: z
-    .string()
+  username: usernameSchema
     .optional()
     .describe(
       "AniList username. Falls back to configured default if not provided.",
@@ -156,8 +164,8 @@ export type PickInput = z.infer<typeof PickInputSchema>;
 
 /** Input for comparing taste profiles between two users */
 export const CompareInputSchema = z.object({
-  user1: z.string().describe("First AniList username"),
-  user2: z.string().describe("Second AniList username"),
+  user1: usernameSchema.describe("First AniList username"),
+  user2: usernameSchema.describe("Second AniList username"),
   type: z
     .enum(["ANIME", "MANGA"])
     .default("ANIME")
@@ -185,6 +193,10 @@ export const SeasonalInputSchema = z.object({
     .enum(["POPULARITY", "SCORE", "TRENDING"])
     .default("POPULARITY")
     .describe("How to rank results"),
+  isAdult: z
+    .boolean()
+    .default(false)
+    .describe("Include adult (18+) content in results"),
   limit: z
     .number()
     .int()
@@ -198,8 +210,7 @@ export type SeasonalInput = z.infer<typeof SeasonalInputSchema>;
 
 /** Input for fetching user statistics */
 export const StatsInputSchema = z.object({
-  username: z
-    .string()
+  username: usernameSchema
     .optional()
     .describe(
       "AniList username. Falls back to configured default if not provided.",
@@ -210,8 +221,7 @@ export type StatsInput = z.infer<typeof StatsInputSchema>;
 
 /** Input for year-in-review summary */
 export const WrappedInputSchema = z.object({
-  username: z
-    .string()
+  username: usernameSchema
     .optional()
     .describe(
       "AniList username. Falls back to configured default if not provided.",
