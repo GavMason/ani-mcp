@@ -8,6 +8,7 @@ import { registerListTools } from "./tools/lists.js";
 import { registerRecommendTools } from "./tools/recommend.js";
 import { registerDiscoverTools } from "./tools/discover.js";
 import { registerInfoTools } from "./tools/info.js";
+import { registerWriteTools } from "./tools/write.js";
 
 // Both vars are optional - warn on missing so operators know what's available
 if (!process.env.ANILIST_USERNAME) {
@@ -29,5 +30,6 @@ registerListTools(server);
 registerRecommendTools(server);
 registerDiscoverTools(server);
 registerInfoTools(server);
+registerWriteTools(server);
 
 server.start({ transportType: "stdio" });

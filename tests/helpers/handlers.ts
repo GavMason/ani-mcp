@@ -322,6 +322,26 @@ export const defaultHandlers = [
       });
     }
 
+    // Save list entry
+    if (matchQuery(body, "SaveMediaListEntry")) {
+      return gql({
+        SaveMediaListEntry: {
+          id: 99,
+          mediaId: (body.variables?.mediaId as number) ?? 1,
+          status: (body.variables?.status as string) ?? "CURRENT",
+          score: (body.variables?.score as number) ?? 0,
+          progress: (body.variables?.progress as number) ?? 0,
+        },
+      });
+    }
+
+    // Delete list entry
+    if (matchQuery(body, "DeleteMediaListEntry")) {
+      return gql({
+        DeleteMediaListEntry: { deleted: true },
+      });
+    }
+
     // Discover (fallback picks)
     if (matchQuery(body, "DiscoverMedia")) {
       return gql({
@@ -531,5 +551,23 @@ export function graphqlErrorHandler(message: string, status?: number) {
     return HttpResponse.json({
       errors: [{ message, status }],
     });
+  });
+}
+
+/** Override save entry to return specific data */
+export function saveEntryHandler(response: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "SaveMediaListEntry")) return undefined;
+    return gql({ SaveMediaListEntry: response });
+  });
+}
+
+/** Override delete entry to return specific result */
+export function deleteEntryHandler(deleted: boolean) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "DeleteMediaListEntry")) return undefined;
+    return gql({ DeleteMediaListEntry: { deleted } });
   });
 }

@@ -199,7 +199,7 @@ function formatListEntry(entry: AniListMediaListEntry, index: number): string {
 
   const lines = [
     `${index}. ${title} (${format}) - ${score}`,
-    `   Status: ${entry.status} | Progress: ${progress} | Updated: ${updated}`,
+    `   Status: ${entry.status} | Progress: ${progress} | Updated: ${updated} | Entry ID: ${entry.id}`,
   ];
 
   if (entry.notes) {

@@ -378,3 +378,78 @@ export const RecommendationsInputSchema = z
   });
 
 export type RecommendationsInput = z.infer<typeof RecommendationsInputSchema>;
+
+/** Input for updating episode or chapter progress */
+export const UpdateProgressInputSchema = z.object({
+  mediaId: z
+    .number()
+    .int()
+    .positive()
+    .describe("AniList media ID to update progress for"),
+  progress: z
+    .number()
+    .int()
+    .min(0)
+    .describe("Episode or chapter number reached"),
+  status: z
+    .enum(["CURRENT", "COMPLETED", "PAUSED", "DROPPED", "REPEATING"])
+    .optional()
+    .describe("List status to set. Defaults to CURRENT if the entry is new."),
+});
+
+export type UpdateProgressInput = z.infer<typeof UpdateProgressInputSchema>;
+
+/** Input for adding a title to the user's list */
+export const AddToListInputSchema = z.object({
+  mediaId: z
+    .number()
+    .int()
+    .positive()
+    .describe("AniList media ID to add to the list"),
+  status: z
+    .enum([
+      "CURRENT",
+      "PLANNING",
+      "COMPLETED",
+      "DROPPED",
+      "PAUSED",
+      "REPEATING",
+    ])
+    .describe("List status to set"),
+  score: z
+    .number()
+    .min(0)
+    .max(10)
+    .optional()
+    .describe("Score on a 0-10 scale (e.g. 8.5). Omit to leave unscored."),
+});
+
+export type AddToListInput = z.infer<typeof AddToListInputSchema>;
+
+/** Input for rating a title */
+export const RateInputSchema = z.object({
+  mediaId: z
+    .number()
+    .int()
+    .positive()
+    .describe("AniList media ID to rate"),
+  score: z
+    .number()
+    .min(0)
+    .max(10)
+    .describe("Score on a 0-10 scale. Use 0 to remove a score."),
+});
+
+export type RateInput = z.infer<typeof RateInputSchema>;
+
+/** Input for removing a title from the list */
+export const DeleteFromListInputSchema = z.object({
+  entryId: z
+    .number()
+    .int()
+    .positive()
+    .describe(
+      "List entry ID to delete. This is the id field on a list entry, not the media ID. " +
+        "Use anilist_list to find entry IDs.",
+    ),
+});

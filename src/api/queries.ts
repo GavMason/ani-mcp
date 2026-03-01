@@ -377,6 +377,42 @@ export const CHARACTER_SEARCH_QUERY = `
   }
 `;
 
+/** Create or update a list entry */
+export const SAVE_MEDIA_LIST_ENTRY_MUTATION = `
+  mutation SaveMediaListEntry(
+    $mediaId: Int
+    $status: MediaListStatus
+    $score: Float
+    $progress: Int
+    $notes: String
+    $private: Boolean
+  ) {
+    SaveMediaListEntry(
+      mediaId: $mediaId
+      status: $status
+      score: $score
+      progress: $progress
+      notes: $notes
+      private: $private
+    ) {
+      id
+      mediaId
+      status
+      score(format: POINT_10)
+      progress
+    }
+  }
+`;
+
+/** Remove a list entry */
+export const DELETE_MEDIA_LIST_ENTRY_MUTATION = `
+  mutation DeleteMediaListEntry($id: Int!) {
+    DeleteMediaListEntry(id: $id) {
+      deleted
+    }
+  }
+`;
+
 /** User's anime/manga list, grouped by status. Omit $status to get all lists. */
 export const USER_LIST_QUERY = `
   query UserMediaList(

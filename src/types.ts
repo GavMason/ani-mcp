@@ -254,6 +254,24 @@ export interface CharacterSearchResponse {
   };
 }
 
+/** Response from saving a list entry */
+export interface SaveMediaListEntryResponse {
+  SaveMediaListEntry: {
+    id: number;
+    mediaId: number;
+    status: string;
+    score: number;
+    progress: number;
+  };
+}
+
+/** Response from deleting a list entry */
+export interface DeleteMediaListEntryResponse {
+  DeleteMediaListEntry: {
+    deleted: boolean;
+  };
+}
+
 /** Single entry from a user's anime/manga list */
 export interface AniListMediaListEntry {
   id: number;

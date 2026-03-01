@@ -8,6 +8,7 @@ import { registerListTools } from "../../src/tools/lists.js";
 import { registerRecommendTools } from "../../src/tools/recommend.js";
 import { registerDiscoverTools } from "../../src/tools/discover.js";
 import { registerInfoTools } from "../../src/tools/info.js";
+import { registerWriteTools } from "../../src/tools/write.js";
 
 // Capture tool definitions via a proxy
 function collectTools() {
@@ -23,6 +24,7 @@ function collectTools() {
   registerRecommendTools(proxy as never);
   registerDiscoverTools(proxy as never);
   registerInfoTools(proxy as never);
+  registerWriteTools(proxy as never);
 
   return tools;
 }

@@ -38,7 +38,7 @@ Works with any MCP-compatible client.
 | Variable | Required | Description |
 | --- | --- | --- |
 | `ANILIST_USERNAME` | No | Default username for list and stats tools. Can also pass per-call. |
-| `ANILIST_TOKEN` | No | AniList OAuth token. Enables authenticated queries. |
+| `ANILIST_TOKEN` | No | AniList OAuth token. Required for write operations and private lists. |
 | `DEBUG` | No | Set to `true` for debug logging to stderr. |
 
 ## Tools
@@ -77,6 +77,15 @@ Works with any MCP-compatible client.
 | `anilist_staff` | Staff credits and voice actors for a title |
 | `anilist_schedule` | Airing schedule and next episode countdown |
 | `anilist_characters` | Search characters by name with appearances and VAs |
+
+### Write (requires `ANILIST_TOKEN`)
+
+| Tool | Description |
+| --- | --- |
+| `anilist_update_progress` | Update episode or chapter progress |
+| `anilist_add_to_list` | Add a title to your list with a status |
+| `anilist_rate` | Score a title (0-10) |
+| `anilist_delete_from_list` | Remove an entry from your list |
 
 ## Build from Source
 
