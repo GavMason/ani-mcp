@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMood, hasMoodMatch } from "../src/engine/mood.js";
+import { parseMood, hasMoodMatch } from "../../src/engine/mood.js";
 
 describe("parseMood", () => {
   it("parses single keyword", () => {

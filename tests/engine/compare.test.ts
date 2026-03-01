@@ -3,9 +3,9 @@ import {
   computeCompatibility,
   computeGenreDivergences,
   findCrossRecs,
-} from "../src/engine/compare.js";
-import { buildTasteProfile } from "../src/engine/taste.js";
-import { makeEntry } from "./fixtures.js";
+} from "../../src/engine/compare.js";
+import { buildTasteProfile } from "../../src/engine/taste.js";
+import { makeEntry } from "../fixtures.js";
 
 describe("computeCompatibility", () => {
   it("returns 0 when fewer than 3 shared scored entries", () => {

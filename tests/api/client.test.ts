@@ -64,6 +64,50 @@ describe("anilistClient.query", () => {
     RETRY_TIMEOUT,
   );
 
+  it(
+    "throws retryable AniListApiError on 500",
+    async () => {
+      mswServer.use(errorHandler(500, "Internal Server Error"));
+      try {
+        await anilistClient.query(DUMMY_QUERY, {}, { cache: null });
+        expect.unreachable("Should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(AniListApiError);
+        expect((e as AniListApiError).status).toBe(500);
+        expect((e as AniListApiError).retryable).toBe(true);
+      }
+    },
+    RETRY_TIMEOUT,
+  );
+
+  it(
+    "throws non-retryable AniListApiError on 403",
+    async () => {
+      mswServer.use(errorHandler(403, "Forbidden"));
+      try {
+        await anilistClient.query(DUMMY_QUERY, {}, { cache: null });
+        expect.unreachable("Should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(AniListApiError);
+        expect((e as AniListApiError).status).toBe(403);
+        expect((e as AniListApiError).retryable).toBe(false);
+      }
+    },
+    RETRY_TIMEOUT,
+  );
+
+  it(
+    "throws on empty response body",
+    async () => {
+      // 200 with no data field
+      mswServer.use(graphqlErrorHandler("No data", undefined));
+      await expect(
+        anilistClient.query(DUMMY_QUERY, {}, { cache: null }),
+      ).rejects.toThrow();
+    },
+    RETRY_TIMEOUT,
+  );
+
   it("uses cache on repeated calls with same args", async () => {
     const query = `query SearchMedia { Page { media { id } } }`;
     const result1 = await anilistClient.query(

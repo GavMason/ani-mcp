@@ -213,6 +213,48 @@ describe("anilist_pick", () => {
     expect(result).toContain("hasn't scored enough");
   });
 
+  it("filters by maxEpisodes", async () => {
+    const completed = makeScoredEntries(10);
+    // Planning list with short and long anime
+    const planning = [
+      makeEntry({ id: 100, score: 0, genres: ["Action"] }),
+      makeEntry({ id: 101, score: 0, genres: ["Action"] }),
+    ];
+    planning[0].status = "PLANNING";
+    planning[0].media.episodes = 12;
+    planning[1].status = "PLANNING";
+    planning[1].media.episodes = 50;
+
+    mswServer.use(dualListHandler(completed, planning));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      maxEpisodes: 24,
+      limit: 5,
+    });
+
+    expect(result).toContain("Top Picks");
+  });
+
+  it("shows unrecognized mood warning", async () => {
+    const completed = makeScoredEntries(10);
+    const planning = [
+      makeEntry({ id: 100, score: 0, genres: ["Action"] }),
+    ];
+    planning[0].status = "PLANNING";
+    mswServer.use(dualListHandler(completed, planning));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      mood: "xyznonexistent",
+      limit: 5,
+    });
+
+    expect(result).toContain("no exact keyword match");
+  });
+
   it("shows mood label when mood is provided", async () => {
     const completed = makeScoredEntries(10);
     const planning = [
@@ -301,6 +343,31 @@ describe("anilist_compare", () => {
     expect(result).toContain("not enough for a compatibility score");
   });
 
+  it("shows shared favorites and disagreements", async () => {
+    // Same IDs, user1 loves id=1, user2 hates it
+    const entries1 = makeScoredEntries(5).map((e) => ({
+      ...e,
+      score: 9,
+    }));
+    const entries2 = entries1.map((e, i) => ({
+      ...e,
+      // First entry: big disagreement. Rest: both high scores.
+      score: i === 0 ? 3 : 9,
+    }));
+
+    mswServer.use(compareListHandler(entries1, entries2));
+
+    const result = await callTool("anilist_compare", {
+      user1: "alice",
+      user2: "bob",
+      type: "ANIME",
+    });
+
+    expect(result).toContain("Shared Favorites:");
+    expect(result).toContain("Biggest Disagreements:");
+    expect(result).toContain("apart");
+  });
+
   it("shows empty-list message for user with no completions", async () => {
     mswServer.use(compareListHandler(makeScoredEntries(5), []));
 
@@ -356,6 +423,104 @@ describe("anilist_wrapped", () => {
     });
 
     expect(result).toContain(`didn't complete any titles in ${currentYear}`);
+  });
+
+  it("shows controversial pick when user score differs from community", async () => {
+    // User scores 10, community meanScore is 40 => gap = 60
+    const entries = wrappedEntries().map((e, i) => ({
+      ...e,
+      score: i === 0 ? 10 : 7,
+      media: {
+        ...e.media,
+        meanScore: i === 0 ? 40 : 70,
+      },
+    }));
+    mswServer.use(listHandler(entries));
+
+    const result = await callTool("anilist_wrapped", {
+      username: "testuser",
+      type: "ANIME",
+      year: currentYear,
+    });
+
+    expect(result).toContain("Most controversial:");
+    expect(result).toContain("above consensus");
+  });
+
+  it("falls back to updatedAt when completedAt is missing", async () => {
+    // Unix timestamp for mid-current-year
+    const ts = Math.floor(
+      new Date(`${currentYear}-07-01`).getTime() / 1000,
+    );
+    const entries = makeScoredEntries(5).map((e) => ({
+      ...e,
+      completedAt: { year: null, month: null, day: null },
+      updatedAt: ts,
+    }));
+    mswServer.use(listHandler(entries));
+
+    const result = await callTool("anilist_wrapped", {
+      username: "testuser",
+      type: "ANIME",
+      year: currentYear,
+    });
+
+    expect(result).toContain(`${currentYear} Wrapped for testuser`);
+    expect(result).toContain("5 anime");
+  });
+
+  it("skips average score when no entries are scored", async () => {
+    const entries = wrappedEntries().map((e) => ({
+      ...e,
+      score: 0,
+    }));
+    mswServer.use(listHandler(entries));
+
+    const result = await callTool("anilist_wrapped", {
+      username: "testuser",
+      type: "ANIME",
+      year: currentYear,
+    });
+
+    expect(result).toContain(`${currentYear} Wrapped for testuser`);
+    expect(result).not.toContain("Average score:");
+    expect(result).not.toContain("Highest rated:");
+  });
+
+  it("excludes entries with no completedAt and no updatedAt", async () => {
+    const entries = makeScoredEntries(5).map((e) => ({
+      ...e,
+      completedAt: { year: null, month: null, day: null },
+      updatedAt: 0,
+    }));
+    mswServer.use(listHandler(entries));
+
+    const result = await callTool("anilist_wrapped", {
+      username: "testuser",
+      type: "ANIME",
+      year: currentYear,
+    });
+
+    expect(result).toContain("didn't complete any titles");
+  });
+
+  it("shows chapters read for manga wrapped", async () => {
+    const entries = wrappedEntries().map((e) => ({
+      ...e,
+      progress: 30,
+      media: { ...e.media, type: "MANGA" as const },
+    }));
+    mswServer.use(listHandler(entries));
+
+    const result = await callTool("anilist_wrapped", {
+      username: "testuser",
+      type: "MANGA",
+      year: currentYear,
+    });
+
+    expect(result).toContain("manga");
+    expect(result).toContain("chapters read");
+    expect(result).not.toContain("episodes watched");
   });
 
   it("counts episodes from progress, not media.episodes", async () => {

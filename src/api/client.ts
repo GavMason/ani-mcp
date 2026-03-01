@@ -6,7 +6,7 @@
  */
 
 import { LRUCache } from "lru-cache";
-import pRetry from "p-retry";
+import pRetry, { AbortError } from "p-retry";
 import pThrottle from "p-throttle";
 
 const ANILIST_API_URL =
@@ -117,16 +117,7 @@ class AniListClient {
         await rateLimit();
         return this.makeRequest<T>(query, variables);
       },
-      {
-        retries: MAX_RETRIES,
-        shouldRetry: (error) => {
-          // Non-retryable API errors (e.g. 404) abort immediately
-          if (error instanceof AniListApiError && !error.retryable) {
-            return false;
-          }
-          return true;
-        },
-      },
+      { retries: MAX_RETRIES },
     );
   }
 
@@ -176,19 +167,31 @@ class AniListClient {
       }
 
       if (response.status === 404) {
-        throw new AniListApiError(
-          "Resource not found on AniList. Check that the ID or username is correct.",
-          404,
-          false,
+        throw new AbortError(
+          new AniListApiError(
+            "Resource not found on AniList. Check that the ID or username is correct.",
+            404,
+            false,
+          ),
         );
       }
 
       // Only server errors (5xx) are worth retrying
-      const retryable = response.status >= 500;
-      throw new AniListApiError(
-        `AniList API error (HTTP ${response.status}): ${body.slice(0, 200)}`,
-        response.status,
-        retryable,
+      if (response.status >= 500) {
+        throw new AniListApiError(
+          `AniList API error (HTTP ${response.status}): ${body.slice(0, 200)}`,
+          response.status,
+          true,
+        );
+      }
+
+      // Client errors (4xx except 429) are not worth retrying
+      throw new AbortError(
+        new AniListApiError(
+          `AniList API error (HTTP ${response.status}): ${body.slice(0, 200)}`,
+          response.status,
+          false,
+        ),
       );
     }
 
@@ -203,11 +206,13 @@ class AniListClient {
       // Prefer GraphQL error status over HTTP status
       const firstError = json.errors[0];
       const status = firstError.status ?? response.status;
-      throw new AniListApiError(
+      const retryable = status === 429 || (status !== undefined && status >= 500);
+      const err = new AniListApiError(
         `AniList GraphQL error: ${firstError.message}`,
         status,
-        status === 429 || (status !== undefined && status >= 500),
+        retryable,
       );
+      throw retryable ? err : new AbortError(err);
     }
 
     // Guard against empty response

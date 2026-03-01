@@ -7,6 +7,7 @@ import {
   searchHandler,
   seasonalHandler,
   recommendationsHandler,
+  detailsHandler,
 } from "../helpers/handlers.js";
 import { makeMedia } from "../fixtures.js";
 
@@ -45,6 +46,16 @@ describe("anilist_search", () => {
     expect(result).toContain("No anime found");
   });
 
+  it("searches manga type", async () => {
+    const result = await callTool("anilist_search", {
+      query: "test",
+      type: "MANGA",
+      limit: 5,
+    });
+
+    expect(result).toContain("manga");
+  });
+
   it("passes genre filter through", async () => {
     const result = await callTool("anilist_search", {
       query: "test",
@@ -78,6 +89,73 @@ describe("anilist_details", () => {
     });
 
     expect(result).toContain("Attack on Titan");
+  });
+
+  it("omits alt title when romaji equals English", async () => {
+    mswServer.use(
+      detailsHandler({
+        ...makeMedia(),
+        title: { romaji: "Same Title", english: "Same Title", native: null },
+        description: "Test.",
+        relations: { edges: [] },
+        recommendations: { nodes: [] },
+      }),
+    );
+
+    const result = await callTool("anilist_details", { id: 1 });
+    // Should not show "(Same Title)" in parens
+    expect(result).not.toContain("(Same Title)");
+  });
+
+  it("renders manga details with chapters and volumes", async () => {
+    mswServer.use(
+      detailsHandler({
+        ...makeMedia({ format: "MANGA" }),
+        type: "MANGA",
+        title: { romaji: "Test Manga", english: "Test Manga", native: null },
+        episodes: null,
+        chapters: 200,
+        volumes: 20,
+        description: "A manga.",
+        relations: { edges: [] },
+        recommendations: { nodes: [] },
+      }),
+    );
+
+    const result = await callTool("anilist_details", { id: 1 });
+    expect(result).toContain("Chapters: 200");
+    expect(result).toContain("20 volumes");
+    expect(result).not.toContain("Episodes:");
+  });
+
+  it("handles missing optional fields gracefully", async () => {
+    mswServer.use(
+      detailsHandler({
+        ...makeMedia(),
+        title: { romaji: "Minimal", english: null, native: null },
+        episodes: null,
+        chapters: null,
+        season: null,
+        seasonYear: null,
+        startDate: { year: 2020, month: null, day: null },
+        studios: { nodes: [] },
+        source: null,
+        tags: [],
+        meanScore: null,
+        description: null,
+        relations: { edges: [] },
+        recommendations: { nodes: [] },
+      }),
+    );
+
+    const result = await callTool("anilist_details", { id: 1 });
+    expect(result).toContain("Minimal");
+    expect(result).toContain("Year: 2020");
+    expect(result).toContain("Not rated");
+    expect(result).toContain("No description available.");
+    expect(result).not.toContain("Studio:");
+    expect(result).not.toContain("Tags:");
+    expect(result).not.toContain("Episodes:");
   });
 });
 

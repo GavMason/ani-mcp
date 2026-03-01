@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   buildTasteProfile,
   describeTasteProfile,
-} from "../src/engine/taste.js";
-import { makeEntry } from "./fixtures.js";
+} from "../../src/engine/taste.js";
+import { makeEntry } from "../fixtures.js";
 
 describe("buildTasteProfile", () => {
   it("returns empty profile when fewer than 5 scored entries", () => {
@@ -117,6 +117,19 @@ describe("buildTasteProfile", () => {
     expect(profile.scoring.tendency).toBe("average");
   });
 
+  it("uses UNKNOWN for null format in breakdown", () => {
+    const entries = Array.from({ length: 5 }, (_, i) => {
+      const e = makeEntry({ id: i + 1, score: 8 });
+      e.media.format = null;
+      return e;
+    });
+    const profile = buildTasteProfile(entries);
+
+    const unknown = profile.formats.find((f) => f.format === "UNKNOWN");
+    expect(unknown).toBeDefined();
+    expect(unknown?.percent).toBe(100);
+  });
+
   it("computes format breakdown as percentages", () => {
     const entries = [
       makeEntry({ format: "TV", id: 1, score: 8 }),
@@ -226,6 +239,26 @@ describe("describeTasteProfile", () => {
 
     expect(desc).toContain("testuser");
     expect(desc).toContain("not enough have scores");
+  });
+
+  it("describes harsh scoring tendency", () => {
+    const entries = Array.from({ length: 6 }, (_, i) =>
+      makeEntry({ score: 5, id: i + 1, genres: ["Action"] }),
+    );
+    const profile = buildTasteProfile(entries);
+    const desc = describeTasteProfile(profile, "harshuser");
+
+    expect(desc).toContain("harshly");
+  });
+
+  it("describes average scoring tendency", () => {
+    const entries = Array.from({ length: 6 }, (_, i) =>
+      makeEntry({ score: 7, id: i + 1, genres: ["Action"] }),
+    );
+    const profile = buildTasteProfile(entries);
+    const desc = describeTasteProfile(profile, "avguser");
+
+    expect(desc).toContain("close to average");
   });
 
   it("includes genres, themes, scoring tendency, and total", () => {

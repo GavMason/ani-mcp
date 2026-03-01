@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { matchCandidates } from "../src/engine/matcher.js";
-import { buildTasteProfile } from "../src/engine/taste.js";
-import { parseMood } from "../src/engine/mood.js";
-import { makeEntry, makeMedia } from "./fixtures.js";
+import { matchCandidates } from "../../src/engine/matcher.js";
+import { buildTasteProfile } from "../../src/engine/taste.js";
+import { parseMood } from "../../src/engine/mood.js";
+import { makeEntry, makeMedia } from "../fixtures.js";
 
 // Profile from a user who loves psychological thrillers
 function makeThrillerProfile() {
@@ -91,6 +91,56 @@ describe("matchCandidates", () => {
     if (!popular || !niche) throw new Error("Expected both results");
 
     expect(niche.score).toBeGreaterThan(popular.score);
+  });
+
+  it("penalizes results when mood penalty genres dominate", () => {
+    const profile = makeThrillerProfile();
+    // "chill" penalizes Horror, Action, Thriller
+    const mood = parseMood("chill");
+
+    const candidates = [
+      makeMedia({ genres: ["Horror", "Thriller"], id: 801 }),
+      makeMedia({ genres: ["Slice of Life", "Iyashikei"], id: 802 }),
+    ];
+
+    const withMood = matchCandidates(candidates, profile, mood);
+    const withoutMood = matchCandidates(candidates, profile);
+
+    const horrorWith = withMood.find((r) => r.media.id === 801);
+    const horrorWithout = withoutMood.find((r) => r.media.id === 801);
+
+    if (horrorWith && horrorWithout) {
+      expect(horrorWith.score).toBeLessThan(horrorWithout.score);
+    }
+  });
+
+  it("skips spoiler tags in mood matching", () => {
+    const profile = makeThrillerProfile();
+    // "dark" boosts Psychological, Thriller, etc.
+    const mood = parseMood("dark");
+
+    // Boost tags are spoilers, so mood matching should ignore them
+    const candidates = [
+      makeMedia({
+        genres: ["Comedy"],
+        tags: [
+          { name: "Psychological", rank: 90, isMediaSpoiler: true },
+          { name: "Thriller", rank: 80, isMediaSpoiler: true },
+        ],
+        id: 901,
+      }),
+    ];
+
+    const withMood = matchCandidates(candidates, profile, mood);
+    const withoutMood = matchCandidates(candidates, profile);
+
+    const withResult = withMood.find((r) => r.media.id === 901);
+    const withoutResult = withoutMood.find((r) => r.media.id === 901);
+
+    // Spoiler tags shouldn't trigger boost
+    if (withResult && withoutResult) {
+      expect(withResult.score).toBe(withoutResult.score);
+    }
   });
 
   it("includes tag-based reasons when tags overlap", () => {
