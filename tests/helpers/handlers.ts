@@ -472,17 +472,20 @@ export const defaultHandlers = [
 // === Per-test Handler Overrides ===
 
 /** Override search to return specific media */
-export function searchHandler(media: ReturnType<typeof makeMedia>[]) {
+export function searchHandler(
+  media: ReturnType<typeof makeMedia>[],
+  pageInfo?: { total: number; hasNextPage: boolean },
+) {
   return http.post(ANILIST_URL, async ({ request }) => {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "SearchMedia")) return undefined;
     return gql({
       Page: {
         pageInfo: {
-          total: media.length,
+          total: pageInfo?.total ?? media.length,
           currentPage: 1,
           lastPage: 1,
-          hasNextPage: false,
+          hasNextPage: pageInfo?.hasNextPage ?? false,
         },
         media,
       },
@@ -520,17 +523,20 @@ export function detailsHandler(
 }
 
 /** Override seasonal to return specific media */
-export function seasonalHandler(media: ReturnType<typeof makeMedia>[]) {
+export function seasonalHandler(
+  media: ReturnType<typeof makeMedia>[],
+  pageInfo?: { total: number; hasNextPage: boolean },
+) {
   return http.post(ANILIST_URL, async ({ request }) => {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "SeasonalMedia")) return undefined;
     return gql({
       Page: {
         pageInfo: {
-          total: media.length,
+          total: pageInfo?.total ?? media.length,
           currentPage: 1,
           lastPage: 1,
-          hasNextPage: false,
+          hasNextPage: pageInfo?.hasNextPage ?? false,
         },
         media,
       },
@@ -571,13 +577,14 @@ export function statsHandler(userStats: Record<string, unknown>) {
 /** Override trending to return specific media */
 export function trendingHandler(
   media: Array<ReturnType<typeof makeMedia> & { trending?: number }>,
+  pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "TrendingMedia")) return undefined;
     return gql({
       Page: {
-        pageInfo: { total: media.length, hasNextPage: false },
+        pageInfo: pageInfo ?? { total: media.length, hasNextPage: false },
         media: media.map((m) => ({ ...m, trending: m.trending ?? 50 })),
       },
     });
@@ -585,13 +592,16 @@ export function trendingHandler(
 }
 
 /** Override genre browse to return specific media */
-export function genreBrowseHandler(media: ReturnType<typeof makeMedia>[]) {
+export function genreBrowseHandler(
+  media: ReturnType<typeof makeMedia>[],
+  pageInfo?: { total: number; hasNextPage: boolean },
+) {
   return http.post(ANILIST_URL, async ({ request }) => {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "GenreBrowse")) return undefined;
     return gql({
       Page: {
-        pageInfo: { total: media.length, hasNextPage: false },
+        pageInfo: pageInfo ?? { total: media.length, hasNextPage: false },
         media,
       },
     });
@@ -619,13 +629,14 @@ export function scheduleHandler(scheduleData: Record<string, unknown>) {
 /** Override character search to return specific data */
 export function characterHandler(
   characters: Array<Record<string, unknown>>,
+  pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "CharacterSearch")) return undefined;
     return gql({
       Page: {
-        pageInfo: { total: characters.length, hasNextPage: false },
+        pageInfo: pageInfo ?? { total: characters.length, hasNextPage: false },
         characters,
       },
     });
@@ -669,13 +680,14 @@ export function deleteEntryHandler(deleted: boolean) {
 /** Override staff search to return specific results */
 export function staffSearchHandler(
   staff: Array<Record<string, unknown>>,
+  pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "StaffSearch")) return undefined;
     return gql({
       Page: {
-        pageInfo: { total: staff.length, hasNextPage: false },
+        pageInfo: pageInfo ?? { total: staff.length, hasNextPage: false },
         staff,
       },
     });

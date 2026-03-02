@@ -23,7 +23,7 @@ import type {
   StaffSearchResponse,
   StudioSearchResponse,
 } from "../types.js";
-import { getTitle, throwToolError } from "../utils.js";
+import { getTitle, throwToolError, paginationFooter } from "../utils.js";
 
 // === Helpers ===
 
@@ -190,7 +190,7 @@ export function registerInfoTools(server: FastMCP): void {
       try {
         const data = await anilistClient.query<CharacterSearchResponse>(
           CHARACTER_SEARCH_QUERY,
-          { search: args.query, page: 1, perPage: args.limit },
+          { search: args.query, page: args.page, perPage: args.limit },
           { cache: "search" },
         );
 
@@ -200,8 +200,10 @@ export function registerInfoTools(server: FastMCP): void {
           return `No characters found matching "${args.query}".`;
         }
 
+        const offset = (args.page - 1) * args.limit;
+        const pageInfo = data.Page.pageInfo;
         const lines: string[] = [
-          `Found ${data.Page.pageInfo.total} character(s) matching "${args.query}"`,
+          `Found ${pageInfo.total} character(s) matching "${args.query}"`,
           "",
         ];
 
@@ -213,7 +215,7 @@ export function registerInfoTools(server: FastMCP): void {
               ? ` - ${char.favourites.toLocaleString()} favorites`
               : "";
 
-          lines.push(`${i + 1}. ${char.name.full}${native}${favs}`);
+          lines.push(`${offset + i + 1}. ${char.name.full}${native}${favs}`);
 
           // Appearances
           for (const edge of char.media.edges.slice(0, 3)) {
@@ -230,7 +232,8 @@ export function registerInfoTools(server: FastMCP): void {
           lines.push("");
         }
 
-        return lines.join("\n");
+        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
+        return lines.join("\n") + (footer ? `\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "searching characters");
       }
@@ -250,7 +253,7 @@ export function registerInfoTools(server: FastMCP): void {
       try {
         const data = await anilistClient.query<StaffSearchResponse>(
           STAFF_SEARCH_QUERY,
-          { search: args.query, perPage: args.limit, mediaPerPage: args.mediaLimit },
+          { search: args.query, page: args.page, perPage: args.limit, mediaPerPage: args.mediaLimit },
           { cache: "search" },
         );
 
@@ -308,7 +311,8 @@ export function registerInfoTools(server: FastMCP): void {
           lines.push(`  URL: ${person.siteUrl}`, "");
         }
 
-        return lines.join("\n");
+        const footer = paginationFooter(args.page, args.limit, data.Page.pageInfo.total, data.Page.pageInfo.hasNextPage);
+        return lines.join("\n") + (footer ? `\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "searching staff");
       }

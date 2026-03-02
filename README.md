@@ -11,7 +11,7 @@ Most AniList integrations mirror the API 1:1. ani-mcp adds an intelligence layer
 - **Compatibility** - compare taste between two users
 - **Year in review** - your watching/reading stats wrapped up
 
-Plus the essentials: search, details, trending, seasonal browsing, list management, and community recommendations.
+Plus the essentials: search, details, trending, seasonal browsing, list management, and community recommendations. All search and browse tools support pagination for browsing beyond the first page of results.
 
 ## Install
 

@@ -5,7 +5,7 @@ import { anilistClient } from "../api/client.js";
 import { TRENDING_MEDIA_QUERY, GENRE_BROWSE_QUERY } from "../api/queries.js";
 import { TrendingInputSchema, GenreBrowseInputSchema } from "../schemas.js";
 import type { TrendingMediaResponse, SearchMediaResponse } from "../types.js";
-import { formatMediaSummary, throwToolError } from "../utils.js";
+import { formatMediaSummary, throwToolError, paginationFooter } from "../utils.js";
 
 /** Register discovery tools on the MCP server */
 export function registerDiscoverTools(server: FastMCP): void {
@@ -25,7 +25,7 @@ export function registerDiscoverTools(server: FastMCP): void {
           {
             type: args.type,
             isAdult: args.isAdult ? undefined : false,
-            page: 1,
+            page: args.page,
             perPage: args.limit,
           },
           { cache: "search" },
@@ -37,16 +37,19 @@ export function registerDiscoverTools(server: FastMCP): void {
           return `No trending ${args.type.toLowerCase()} found.`;
         }
 
+        const offset = (args.page - 1) * args.limit;
+        const pageInfo = data.Page.pageInfo;
         const header = [
-          `Trending ${args.type} right now (${data.Page.pageInfo.total} total, showing ${results.length})`,
+          `Trending ${args.type} right now (${pageInfo.total} total, showing ${results.length})`,
           "",
         ].join("\n");
 
         const formatted = results.map(
-          (m, i) => `${i + 1}. ${formatMediaSummary(m)}`,
+          (m, i) => `${offset + i + 1}. ${formatMediaSummary(m)}`,
         );
 
-        return header + formatted.join("\n\n");
+        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
+        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "fetching trending");
       }
@@ -76,7 +79,7 @@ export function registerDiscoverTools(server: FastMCP): void {
           genre_in: [args.genre],
           sort: sortMap[args.sort] ?? sortMap.SCORE,
           isAdult: args.isAdult ? undefined : false,
-          page: 1,
+          page: args.page,
           perPage: args.limit,
         };
 
@@ -102,17 +105,20 @@ export function registerDiscoverTools(server: FastMCP): void {
         if (args.format) filters.push(args.format);
         const filterStr = filters.length > 0 ? ` (${filters.join(", ")})` : "";
 
+        const offset = (args.page - 1) * args.limit;
+        const pageInfo = data.Page.pageInfo;
         const header = [
           `Top ${args.genre} ${args.type}${filterStr}`,
-          `${data.Page.pageInfo.total} total, showing ${results.length} by ${args.sort.toLowerCase()}`,
+          `${pageInfo.total} total, showing ${results.length} by ${args.sort.toLowerCase()}`,
           "",
         ].join("\n");
 
         const formatted = results.map(
-          (m, i) => `${i + 1}. ${formatMediaSummary(m)}`,
+          (m, i) => `${offset + i + 1}. ${formatMediaSummary(m)}`,
         );
 
-        return header + formatted.join("\n\n");
+        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
+        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "browsing genres");
       }

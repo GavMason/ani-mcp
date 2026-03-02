@@ -46,6 +46,19 @@ export function throwToolError(error: unknown, action: string): never {
   throw new UserError(`Unexpected error while ${action}. Please try again.`);
 }
 
+/** Pagination footer for multi-page results */
+export function paginationFooter(
+  page: number,
+  limit: number,
+  total: number,
+  hasNextPage: boolean,
+): string {
+  const lastPage = Math.ceil(total / limit);
+  if (lastPage <= 1) return "";
+  const line = `Page ${page} of ${lastPage} (${total} total)`;
+  return hasNextPage ? `${line}. Use page: ${page + 1} for more.` : line;
+}
+
 /** Format a media entry as a compact multi-line summary */
 export function formatMediaSummary(media: AniListMedia): string {
   const title = getTitle(media.title);

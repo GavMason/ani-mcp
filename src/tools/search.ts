@@ -24,6 +24,7 @@ import {
   truncateDescription,
   throwToolError,
   formatMediaSummary,
+  paginationFooter,
 } from "../utils.js";
 
 // Default to popularity for broad queries
@@ -46,7 +47,7 @@ export function registerSearchTools(server: FastMCP): void {
         const variables: Record<string, unknown> = {
           search: args.query,
           type: args.type,
-          page: 1, // single page only, no pagination
+          page: args.page,
           perPage: args.limit,
           sort: SEARCH_SORT,
         };
@@ -70,6 +71,7 @@ export function registerSearchTools(server: FastMCP): void {
           return `No ${args.type.toLowerCase()} found matching "${args.query}". Try a different spelling or broader search.`;
         }
 
+        const offset = (args.page - 1) * args.limit;
         const header = [
           `Found ${pageInfo.total} ${args.type.toLowerCase()} matching "${args.query}"`,
           `Showing ${results.length} results:`,
@@ -77,10 +79,11 @@ export function registerSearchTools(server: FastMCP): void {
         ].join("\n");
 
         const formatted = results.map(
-          (m, i) => `${i + 1}. ${formatMediaSummary(m)}`,
+          (m, i) => `${offset + i + 1}. ${formatMediaSummary(m)}`,
         );
 
-        return header + formatted.join("\n\n");
+        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
+        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "searching");
       }
@@ -223,7 +226,7 @@ export function registerSearchTools(server: FastMCP): void {
             type: "ANIME",
             isAdult: args.isAdult ? undefined : false,
             sort: sortMap[args.sort] ?? sortMap.POPULARITY,
-            page: 1,
+            page: args.page,
             perPage: args.limit,
           },
           { cache: "seasonal" },
@@ -235,17 +238,20 @@ export function registerSearchTools(server: FastMCP): void {
           return `No anime found for ${season} ${year}.`;
         }
 
+        const offset = (args.page - 1) * args.limit;
+        const pageInfo = data.Page.pageInfo;
         const header = [
-          `${season} ${year} Anime (${data.Page.pageInfo.total} total, showing ${results.length})`,
+          `${season} ${year} Anime (${pageInfo.total} total, showing ${results.length})`,
           `Sorted by: ${args.sort.toLowerCase()}`,
           "",
         ].join("\n");
 
         const formatted = results.map(
-          (m, i) => `${i + 1}. ${formatMediaSummary(m)}`,
+          (m, i) => `${offset + i + 1}. ${formatMediaSummary(m)}`,
         );
 
-        return header + formatted.join("\n\n");
+        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
+        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "browsing seasonal anime");
       }

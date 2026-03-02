@@ -451,8 +451,8 @@ export const USER_LIST_QUERY = `
 
 /** Search for staff by name with their top works */
 export const STAFF_SEARCH_QUERY = `
-  query StaffSearch($search: String!, $perPage: Int, $mediaPerPage: Int) {
-    Page(perPage: $perPage) {
+  query StaffSearch($search: String!, $page: Int, $perPage: Int, $mediaPerPage: Int) {
+    Page(page: $page, perPage: $perPage) {
       pageInfo { total hasNextPage }
       staff(search: $search, sort: SEARCH_MATCH) {
         id

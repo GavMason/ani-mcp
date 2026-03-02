@@ -2,6 +2,14 @@
 
 import { z } from "zod";
 
+// Reusable page param for paginated tools
+const pageParam = z
+  .number()
+  .int()
+  .min(1)
+  .default(1)
+  .describe("Page number for pagination (default 1)");
+
 // AniList usernames: 2-20 chars, alphanumeric + underscores
 const usernameSchema = z
   .string()
@@ -55,6 +63,7 @@ export const SearchInputSchema = z.object({
     .max(25)
     .default(10)
     .describe("Number of results to return (default 10, max 25)"),
+  page: pageParam,
 });
 
 export type SearchInput = z.infer<typeof SearchInputSchema>;
@@ -109,6 +118,7 @@ export const ListInputSchema = z.object({
     .max(100)
     .default(25)
     .describe("Maximum entries to return (default 25, max 100)"),
+  page: pageParam,
 });
 
 export type ListInput = z.infer<typeof ListInputSchema>;
@@ -204,6 +214,7 @@ export const SeasonalInputSchema = z.object({
     .max(50)
     .default(15)
     .describe("Number of results to return (default 15, max 50)"),
+  page: pageParam,
 });
 
 export type SeasonalInput = z.infer<typeof SeasonalInputSchema>;
@@ -258,6 +269,7 @@ export const TrendingInputSchema = z.object({
     .max(25)
     .default(10)
     .describe("Number of results to return (default 10, max 25)"),
+  page: pageParam,
 });
 
 export type TrendingInput = z.infer<typeof TrendingInputSchema>;
@@ -310,6 +322,7 @@ export const GenreBrowseInputSchema = z.object({
     .max(25)
     .default(10)
     .describe("Number of results to return (default 10, max 25)"),
+  page: pageParam,
 });
 
 export type GenreBrowseInput = z.infer<typeof GenreBrowseInputSchema>;
@@ -356,6 +369,7 @@ export const CharacterSearchInputSchema = z.object({
     .max(10)
     .default(5)
     .describe("Number of results to return (default 5, max 10)"),
+  page: pageParam,
 });
 
 export type CharacterSearchInput = z.infer<typeof CharacterSearchInputSchema>;
@@ -512,6 +526,7 @@ export const StaffSearchInputSchema = z.object({
     .max(25)
     .default(10)
     .describe("Works per person to show (default 10, max 25)"),
+  page: pageParam,
 });
 
 export type StaffSearchInput = z.infer<typeof StaffSearchInputSchema>;

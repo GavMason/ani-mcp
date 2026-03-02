@@ -9,7 +9,7 @@ import type {
   UserStatsResponse,
   MediaTypeStats,
 } from "../types.js";
-import { getTitle, getDefaultUsername, throwToolError } from "../utils.js";
+import { getTitle, getDefaultUsername, throwToolError, paginationFooter } from "../utils.js";
 
 // Map user-friendly sort names to AniList's internal enum values
 const SORT_MAP: Record<string, string[]> = {
@@ -52,8 +52,10 @@ export function registerListTools(server: FastMCP): void {
         // Re-sort after merging; AniList only sorts within each status group
         sortEntries(allEntries, args.sort);
 
-        const limited = allEntries.slice(0, args.limit);
         const totalCount = allEntries.length;
+        const offset = (args.page - 1) * args.limit;
+        const limited = allEntries.slice(offset, offset + args.limit);
+        const hasNextPage = offset + args.limit < totalCount;
 
         const header = [
           `${username}'s ${args.type} list` +
@@ -64,10 +66,11 @@ export function registerListTools(server: FastMCP): void {
         ].join("\n");
 
         const formatted = limited.map((entry, i) =>
-          formatListEntry(entry, i + 1),
+          formatListEntry(entry, offset + i + 1),
         );
 
-        return header + formatted.join("\n\n");
+        const footer = paginationFooter(args.page, args.limit, totalCount, hasNextPage);
+        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "fetching list");
       }
