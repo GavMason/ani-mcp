@@ -2,15 +2,23 @@
 
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "../api/client.js";
-import { DISCOVER_MEDIA_QUERY } from "../api/queries.js";
+import {
+  DISCOVER_MEDIA_QUERY,
+  MEDIA_DETAILS_QUERY,
+  RECOMMENDATIONS_QUERY,
+} from "../api/queries.js";
 import {
   TasteInputSchema,
   PickInputSchema,
   CompareInputSchema,
   WrappedInputSchema,
+  ExplainInputSchema,
+  SimilarInputSchema,
 } from "../schemas.js";
 import type {
   SearchMediaResponse,
+  MediaDetailsResponse,
+  RecommendationsResponse,
   AniListMediaListEntry,
   AniListMedia,
 } from "../types.js";
@@ -20,13 +28,18 @@ import {
   describeTasteProfile,
   type TasteProfile,
 } from "../engine/taste.js";
-import { matchCandidates } from "../engine/matcher.js";
-import { parseMood, hasMoodMatch } from "../engine/mood.js";
+import { matchCandidates, explainMatch } from "../engine/matcher.js";
+import {
+  parseMood,
+  hasMoodMatch,
+  seasonalMoodSuggestions,
+} from "../engine/mood.js";
 import {
   computeCompatibility,
   computeGenreDivergences,
   findCrossRecs,
 } from "../engine/compare.js";
+import { rankSimilar } from "../engine/similar.js";
 
 // User scores are normalized to 1-10 via score(format: POINT_10) in the list query.
 // Community meanScore is 0-100. Multiply user score by 10 to compare on the same scale.
@@ -254,6 +267,14 @@ export function registerRecommendTools(server: FastMCP): void {
 
           lines.push(`   URL: ${m.siteUrl}`);
           lines.push("");
+        }
+
+        // Seasonal mood tip when no mood was provided
+        if (!args.mood) {
+          const { season, moods } = seasonalMoodSuggestions();
+          lines.push(
+            `Tip: try a mood like "${moods.join('", "')}" for ${season.toLowerCase()} picks`,
+          );
         }
 
         return lines.join("\n");
@@ -542,6 +563,187 @@ export function registerRecommendTools(server: FastMCP): void {
         return lines.join("\n");
       } catch (error) {
         return throwToolError(error, "generating year summary");
+      }
+    },
+  });
+
+  // === Explain Match ===
+
+  server.addTool({
+    name: "anilist_explain",
+    description:
+      "Score a specific title against a user's taste profile and explain the alignment. " +
+      'Use when the user asks "why would I like this?", "is this for me?", or ' +
+      "wants to know how well a specific anime/manga matches their preferences.",
+    parameters: ExplainInputSchema,
+    execute: async (args) => {
+      try {
+        const username = getDefaultUsername(args.username);
+
+        // Fetch media details and taste profile in parallel
+        const [mediaData, { profile, entries }] = await Promise.all([
+          anilistClient.query<MediaDetailsResponse>(MEDIA_DETAILS_QUERY, {
+            id: args.mediaId,
+          }),
+          profileForUser(username, args.type),
+        ]);
+
+        const media = mediaData.Media;
+        const title = getTitle(media.title);
+
+        if (profile.genres.length === 0) {
+          return (
+            `${username} hasn't scored enough completed titles to build a taste profile. ` +
+            `Score more titles on AniList for personalized analysis.`
+          );
+        }
+
+        // Check if user already has this on their list
+        const existingEntry = entries.find((e) => e.media.id === media.id);
+
+        const mood = args.mood ? parseMood(args.mood) : undefined;
+        const result = explainMatch(media, profile, mood);
+        const b = result.breakdown;
+
+        const lines: string[] = [
+          `# Match Analysis: ${title}`,
+          "",
+          `Match Score: ${b.finalScore}/100`,
+          "",
+          "## Score Breakdown",
+          `  Genre affinity: ${Math.round(b.genreScore * 100)}%`,
+          `  Theme affinity: ${Math.round(b.tagScore * 100)}%`,
+          `  Community score: ${Math.round(b.communityScore * 100)}%`,
+          `  Popularity adjustment: ${Math.round((1 - b.popularityFactor) * -100)}%`,
+        ];
+
+        if (b.moodMultiplier !== 1) {
+          const sign = b.moodMultiplier > 1 ? "+" : "";
+          lines.push(
+            `  Mood modifier: ${sign}${Math.round((b.moodMultiplier - 1) * 100)}%`,
+          );
+        }
+
+        // Genre alignment
+        if (
+          result.matchedGenres.length > 0 ||
+          result.unmatchedGenres.length > 0
+        ) {
+          lines.push("", "## Genre Alignment");
+          if (result.matchedGenres.length > 0) {
+            lines.push(`  Matching: ${result.matchedGenres.join(", ")}`);
+          }
+          if (result.unmatchedGenres.length > 0) {
+            lines.push(`  New for you: ${result.unmatchedGenres.join(", ")}`);
+          }
+        }
+
+        // Theme alignment
+        if (result.matchedTags.length > 0 || result.unmatchedTags.length > 0) {
+          lines.push("", "## Theme Alignment");
+          if (result.matchedTags.length > 0) {
+            lines.push(
+              `  Matching: ${result.matchedTags.slice(0, 5).join(", ")}`,
+            );
+          }
+          if (result.unmatchedTags.length > 0) {
+            lines.push(
+              `  New for you: ${result.unmatchedTags.slice(0, 5).join(", ")}`,
+            );
+          }
+        }
+
+        // Mood fit
+        if (result.moodFit) {
+          lines.push("", `Mood: ${result.moodFit}`);
+        }
+
+        // User's existing relationship with this title
+        if (existingEntry) {
+          lines.push("");
+          const status = existingEntry.status;
+          const scorePart =
+            existingEntry.score > 0
+              ? ` - scored ${existingEntry.score}/10`
+              : "";
+          lines.push(`Note: You have this as ${status}${scorePart}`);
+        }
+
+        lines.push("", `AniList: ${media.siteUrl}`);
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "explaining match");
+      }
+    },
+  });
+
+  // === Similar Titles ===
+
+  server.addTool({
+    name: "anilist_similar",
+    description:
+      "Find titles similar to a specific anime or manga. " +
+      "Use when the user asks for shows like a specific title, " +
+      "or wants content-based recommendations without needing a user profile.",
+    parameters: SimilarInputSchema,
+    execute: async (args) => {
+      try {
+        // Fetch source details and recommendations in parallel
+        const [detailsData, recsData] = await Promise.all([
+          anilistClient.query<MediaDetailsResponse>(MEDIA_DETAILS_QUERY, {
+            id: args.mediaId,
+          }),
+          anilistClient.query<RecommendationsResponse>(RECOMMENDATIONS_QUERY, {
+            id: args.mediaId,
+            perPage: 25,
+          }),
+        ]);
+
+        const source = detailsData.Media;
+        const sourceTitle = getTitle(source.title);
+
+        // Build candidate list and rec rating map
+        const candidates: AniListMedia[] = [];
+        const recRatings = new Map<number, number>();
+
+        for (const node of recsData.Media.recommendations.nodes) {
+          if (!node.mediaRecommendation) continue;
+          candidates.push(node.mediaRecommendation);
+          if (node.rating > 0) {
+            recRatings.set(node.mediaRecommendation.id, node.rating);
+          }
+        }
+
+        if (candidates.length === 0) {
+          return `No similar titles found for "${sourceTitle}". This title may not have enough community recommendations yet.`;
+        }
+
+        const results = rankSimilar(source, candidates, recRatings);
+        const top = results.slice(0, args.limit);
+
+        const lines: string[] = [`# Similar to ${sourceTitle}`, ""];
+
+        for (let i = 0; i < top.length; i++) {
+          const r = top[i];
+          const m = r.media;
+          const title = getTitle(m.title);
+          const score = m.meanScore ? `${m.meanScore}/100` : "Unrated";
+          const format = m.format ?? "";
+          const eps = m.episodes ? `${m.episodes} episodes` : "";
+
+          lines.push(`${i + 1}. ${title} - ${r.similarityScore}% similar`);
+          lines.push(`   ${[format, score, eps].filter(Boolean).join(" - ")}`);
+          for (const reason of r.reasons) {
+            lines.push(`   - ${reason}`);
+          }
+          lines.push(`   URL: ${m.siteUrl}`);
+          lines.push("");
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "finding similar titles");
       }
     },
   });

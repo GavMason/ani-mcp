@@ -13,6 +13,26 @@ export interface MatchResult {
   moodFit: string | null;
 }
 
+export interface ScoreBreakdown {
+  genreScore: number;
+  tagScore: number;
+  communityScore: number;
+  popularityFactor: number;
+  moodMultiplier: number;
+  finalScore: number;
+}
+
+export interface ExplainResult {
+  media: AniListMedia;
+  breakdown: ScoreBreakdown;
+  matchedGenres: string[];
+  unmatchedGenres: string[];
+  matchedTags: string[];
+  unmatchedTags: string[];
+  reasons: string[];
+  moodFit: string | null;
+}
+
 // === Constants ===
 
 // How much each signal contributes to the final score
@@ -211,6 +231,86 @@ function applyMood(
   }
 
   return null;
+}
+
+// === Single-Title Explain ===
+
+/** Score a single title against a taste profile with a detailed breakdown */
+export function explainMatch(
+  media: AniListMedia,
+  profile: TasteProfile,
+  mood?: MoodModifiers,
+): ExplainResult {
+  const genreWeights = toWeightMap(profile.genres);
+  const tagWeights = toWeightMap(profile.tags);
+  const maxGenreWeight = profile.genres[0]?.weight ?? 1;
+  const maxTagWeight = profile.tags[0]?.weight ?? 1;
+
+  const reasons: string[] = [];
+
+  // Genre affinity with matched/unmatched tracking
+  const genreScore = computeGenreAffinity(
+    media,
+    genreWeights,
+    maxGenreWeight,
+    reasons,
+  );
+  const matchedGenres = media.genres.filter((g) => genreWeights.has(g));
+  const unmatchedGenres = media.genres.filter((g) => !genreWeights.has(g));
+
+  // Tag affinity with matched/unmatched tracking
+  const tagScore = computeTagAffinity(media, tagWeights, maxTagWeight, reasons);
+  const nonSpoilerTags = media.tags.filter((t) => !t.isMediaSpoiler);
+  const matchedTags = nonSpoilerTags
+    .filter((t) => tagWeights.has(t.name))
+    .map((t) => t.name);
+  const unmatchedTags = nonSpoilerTags
+    .filter((t) => !tagWeights.has(t.name))
+    .map((t) => t.name);
+
+  const communityScore = (media.meanScore ?? 70) / 100;
+  const popFactor = popularityDiversityFactor(media.popularity);
+
+  let finalScore =
+    genreScore * GENRE_WEIGHT +
+    tagScore * TAG_WEIGHT +
+    communityScore * COMMUNITY_WEIGHT;
+  finalScore *= popFactor;
+
+  // Mood modifier
+  let moodMultiplier = 1;
+  const moodFit = mood ? applyMood(media, mood, reasons) : null;
+  if (moodFit === "boost") {
+    moodMultiplier = MOOD_BOOST;
+    finalScore *= MOOD_BOOST;
+  }
+  if (moodFit === "penalty") {
+    moodMultiplier = MOOD_PENALTY;
+    finalScore *= MOOD_PENALTY;
+  }
+
+  return {
+    media,
+    breakdown: {
+      genreScore,
+      tagScore,
+      communityScore,
+      popularityFactor: popFactor,
+      moodMultiplier,
+      // Scale 0-1 to 0-100
+      finalScore: Math.round(Math.min(1, finalScore) * 100),
+    },
+    matchedGenres,
+    unmatchedGenres,
+    matchedTags,
+    unmatchedTags,
+    reasons,
+    moodFit: moodFit
+      ? moodFit === "boost"
+        ? "Strong mood match"
+        : "Weak mood fit"
+      : null,
+  };
 }
 
 // === Helpers ===

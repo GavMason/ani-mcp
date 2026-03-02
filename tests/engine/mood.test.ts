@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseMood, hasMoodMatch } from "../../src/engine/mood.js";
+import {
+  parseMood,
+  hasMoodMatch,
+  seasonalMoodSuggestions,
+} from "../../src/engine/mood.js";
 
 describe("parseMood", () => {
   it("parses single keyword", () => {
@@ -83,5 +87,64 @@ describe("hasMoodMatch", () => {
   it("is case-insensitive", () => {
     expect(hasMoodMatch("DARK")).toBe(true);
     expect(hasMoodMatch("Dark and Scary")).toBe(true);
+  });
+});
+
+describe("new mood keywords", () => {
+  it("parses nostalgic mood", () => {
+    const mood = parseMood("nostalgic");
+    expect(mood.boostTags.has("Coming of Age")).toBe(true);
+    expect(mood.boostTags.has("School")).toBe(true);
+    expect(mood.penalizeTags.has("Isekai")).toBe(true);
+  });
+
+  it("parses artistic mood", () => {
+    const mood = parseMood("artistic");
+    expect(mood.boostTags.has("Avant Garde")).toBe(true);
+    expect(mood.boostTags.has("Visual Arts")).toBe(true);
+    expect(mood.penalizeTags.has("Shounen")).toBe(true);
+  });
+
+  it("parses competitive mood", () => {
+    const mood = parseMood("competitive");
+    expect(mood.boostGenres.has("Sports")).toBe(true);
+    expect(mood.boostTags.has("Tournament")).toBe(true);
+    expect(mood.penalizeTags.has("Slice of Life")).toBe(true);
+  });
+
+  it("resolves new synonyms", () => {
+    expect(parseMood("retro").boostTags).toEqual(parseMood("nostalgic").boostTags);
+    expect(parseMood("artsy").boostTags).toEqual(parseMood("artistic").boostTags);
+    expect(parseMood("rivalry").boostTags).toEqual(
+      parseMood("competitive").boostTags,
+    );
+  });
+
+  it("combines new moods with existing moods", () => {
+    const mood = parseMood("nostalgic and romantic");
+    expect(mood.boostTags.has("Coming of Age")).toBe(true);
+    expect(mood.boostGenres.has("Romance")).toBe(true);
+  });
+
+  it("recognizes new synonyms via hasMoodMatch", () => {
+    expect(hasMoodMatch("retro")).toBe(true);
+    expect(hasMoodMatch("artsy")).toBe(true);
+    expect(hasMoodMatch("tournament")).toBe(true);
+    expect(hasMoodMatch("aesthetic")).toBe(true);
+  });
+});
+
+describe("seasonalMoodSuggestions", () => {
+  it("returns season and mood suggestions", () => {
+    const result = seasonalMoodSuggestions();
+    expect(result.season).toMatch(/^(WINTER|SPRING|SUMMER|FALL)$/);
+    expect(result.moods.length).toBeGreaterThan(0);
+  });
+
+  it("all suggestions are recognized mood keywords", () => {
+    const { moods } = seasonalMoodSuggestions();
+    for (const m of moods) {
+      expect(hasMoodMatch(m)).toBe(true);
+    }
   });
 });

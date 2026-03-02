@@ -428,11 +428,7 @@ export type AddToListInput = z.infer<typeof AddToListInputSchema>;
 
 /** Input for rating a title */
 export const RateInputSchema = z.object({
-  mediaId: z
-    .number()
-    .int()
-    .positive()
-    .describe("AniList media ID to rate"),
+  mediaId: z.number().int().positive().describe("AniList media ID to rate"),
   score: z
     .number()
     .min(0)
@@ -453,3 +449,45 @@ export const DeleteFromListInputSchema = z.object({
         "Use anilist_list to find entry IDs.",
     ),
 });
+
+/** Input for scoring a title against a user's taste profile */
+export const ExplainInputSchema = z.object({
+  mediaId: z
+    .number()
+    .int()
+    .positive()
+    .describe("AniList media ID to evaluate against your taste profile"),
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA", "BOTH"])
+    .default("BOTH")
+    .describe("Build taste profile from anime list, manga list, or both"),
+  mood: z
+    .string()
+    .optional()
+    .describe('Optional mood context, e.g. "dark and brainy"'),
+});
+
+export type ExplainInput = z.infer<typeof ExplainInputSchema>;
+
+/** Input for finding titles similar to a specific anime or manga */
+export const SimilarInputSchema = z.object({
+  mediaId: z
+    .number()
+    .int()
+    .positive()
+    .describe("AniList media ID to find similar titles for"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .default(10)
+    .describe("Number of similar titles to return (default 10, max 25)"),
+});
+
+export type SimilarInput = z.infer<typeof SimilarInputSchema>;

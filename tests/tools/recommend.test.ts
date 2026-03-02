@@ -541,3 +541,226 @@ describe("anilist_wrapped", () => {
     expect(result).toContain("144 episodes watched");
   });
 });
+
+describe("anilist_explain", () => {
+  // Combined handler for explain: MediaDetails + MediaListCollection
+  function explainHandler(
+    entries: ReturnType<typeof makeEntry>[],
+    mediaOverrides?: Record<string, unknown>,
+  ) {
+    return http.post(ANILIST_URL, async ({ request }) => {
+      const body = (await request.json()) as {
+        query?: string;
+        variables?: Record<string, unknown>;
+      };
+
+      if (body.query?.includes("MediaDetails")) {
+        const m = makeMedia({
+          id: (body.variables?.id as number) ?? 1,
+          genres: ["Action", "Adventure", "Fantasy"],
+          meanScore: 90,
+        });
+        return HttpResponse.json({
+          data: {
+            Media: {
+              ...m,
+              title: { romaji: "Test Anime", english: "Test Anime", native: null },
+              episodes: 25,
+              description: "A test synopsis.",
+              relations: { edges: [] },
+              recommendations: { nodes: [] },
+              ...mediaOverrides,
+            },
+          },
+        });
+      }
+
+      if (body.query?.includes("MediaListCollection")) {
+        return HttpResponse.json({
+          data: {
+            MediaListCollection: {
+              lists: entries.length
+                ? [{ name: "Completed", status: "COMPLETED", entries }]
+                : [],
+            },
+          },
+        });
+      }
+
+      return undefined;
+    });
+  }
+
+  it("shows match score and genre alignment", async () => {
+    const entries = makeScoredEntries(10);
+    mswServer.use(explainHandler(entries));
+
+    const result = await callTool("anilist_explain", {
+      mediaId: 1,
+      username: "testuser",
+      type: "ANIME",
+    });
+
+    expect(result).toContain("Match Analysis:");
+    expect(result).toContain("Score Breakdown");
+    expect(result).toContain("Genre");
+  });
+
+  it("notes when user has completed the title", async () => {
+    const entries = makeScoredEntries(10);
+    mswServer.use(explainHandler(entries));
+
+    const result = await callTool("anilist_explain", {
+      mediaId: 1,
+      username: "testuser",
+      type: "ANIME",
+    });
+
+    expect(result).toContain("COMPLETED");
+  });
+
+  it("shows not-enough message when profile is too thin", async () => {
+    mswServer.use(explainHandler([]));
+
+    const result = await callTool("anilist_explain", {
+      mediaId: 99,
+      username: "testuser",
+      type: "ANIME",
+    });
+
+    expect(result).toContain("hasn't scored enough");
+  });
+
+  it("includes mood modifier when mood is provided", async () => {
+    const entries = makeScoredEntries(10);
+    mswServer.use(explainHandler(entries));
+
+    const result = await callTool("anilist_explain", {
+      mediaId: 1,
+      username: "testuser",
+      type: "ANIME",
+      mood: "hype action",
+    });
+
+    expect(result).toContain("Match Analysis:");
+  });
+});
+
+describe("anilist_similar", () => {
+  it("returns similar titles with similarity scores", async () => {
+    const result = await callTool("anilist_similar", {
+      mediaId: 1,
+      limit: 5,
+    });
+
+    expect(result).toContain("Similar to");
+    expect(result).toContain("similar");
+  });
+
+  it("shows no-results message when no recommendations exist", async () => {
+    // Combined handler: MediaDetails + empty MediaRecommendations
+    mswServer.use(
+      http.post(ANILIST_URL, async ({ request }) => {
+        const body = (await request.json()) as {
+          query?: string;
+          variables?: Record<string, unknown>;
+        };
+
+        if (body.query?.includes("MediaDetails")) {
+          const m = makeMedia({ id: 1, genres: ["Action"], meanScore: 80 });
+          return HttpResponse.json({
+            data: {
+              Media: {
+                ...m,
+                title: { romaji: "Obscure Title", english: "Obscure Title", native: null },
+                episodes: 12,
+                description: "Test.",
+                relations: { edges: [] },
+                recommendations: { nodes: [] },
+              },
+            },
+          });
+        }
+
+        if (body.query?.includes("MediaRecommendations")) {
+          return HttpResponse.json({
+            data: {
+              Media: {
+                id: 1,
+                title: { romaji: "Obscure Title", english: "Obscure Title", native: null },
+                recommendations: { nodes: [] },
+              },
+            },
+          });
+        }
+
+        return undefined;
+      }),
+    );
+
+    const result = await callTool("anilist_similar", {
+      mediaId: 1,
+      limit: 5,
+    });
+
+    expect(result).toContain("No similar titles found");
+  });
+
+  it("respects limit parameter", async () => {
+    const result = await callTool("anilist_similar", {
+      mediaId: 1,
+      limit: 1,
+    });
+
+    // Should have exactly 1 result
+    expect(result).toContain("1.");
+    expect(result).not.toContain("2.");
+  });
+});
+
+describe("anilist_pick seasonal hint", () => {
+  it("shows seasonal mood tip when no mood is provided", async () => {
+    const completed = makeScoredEntries(10);
+    const planning = [
+      makeEntry({
+        id: 100,
+        score: 0,
+        genres: ["Action", "Adventure"],
+      }),
+    ];
+    planning[0].status = "PLANNING";
+
+    mswServer.use(dualListHandler(completed, planning));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      limit: 5,
+    });
+
+    expect(result).toContain("Tip: try a mood like");
+  });
+
+  it("hides seasonal tip when mood is provided", async () => {
+    const completed = makeScoredEntries(10);
+    const planning = [
+      makeEntry({
+        id: 100,
+        score: 0,
+        genres: ["Action", "Adventure"],
+      }),
+    ];
+    planning[0].status = "PLANNING";
+
+    mswServer.use(dualListHandler(completed, planning));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      mood: "dark",
+      limit: 5,
+    });
+
+    expect(result).not.toContain("Tip: try a mood like");
+  });
+});

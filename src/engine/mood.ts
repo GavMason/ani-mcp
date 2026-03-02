@@ -82,6 +82,24 @@ const BASE_MOOD_RULES: Record<string, MoodRule> = {
     boost: ["Psychological", "Avant Garde", "Surreal", "Experimental"],
     penalize: ["Shounen", "Sports"],
   },
+  nostalgic: {
+    boost: [
+      "Coming of Age",
+      "Drama",
+      "Slice of Life",
+      "School",
+      "Ensemble Cast",
+    ],
+    penalize: ["Isekai", "Mecha"],
+  },
+  artistic: {
+    boost: ["Avant Garde", "Drama", "Music", "Surreal", "Visual Arts"],
+    penalize: ["Shounen", "Ecchi"],
+  },
+  competitive: {
+    boost: ["Sports", "Strategy Game", "Shounen", "Tournament", "Martial Arts"],
+    penalize: ["Slice of Life", "Iyashikei"],
+  },
 };
 
 // Synonyms that resolve to a base keyword's rules
@@ -134,6 +152,17 @@ const MOOD_SYNONYMS: Record<string, string> = {
   // trippy
   surreal: "trippy",
   experimental: "trippy",
+  // nostalgic
+  retro: "nostalgic",
+  throwback: "nostalgic",
+  classic: "nostalgic",
+  // artistic
+  artsy: "artistic",
+  beautiful: "artistic",
+  aesthetic: "artistic",
+  // competitive
+  rivalry: "competitive",
+  tournament: "competitive",
 };
 
 // Merge base rules and synonyms into a single lookup
@@ -187,4 +216,30 @@ export function hasMoodMatch(mood: string): boolean {
 /** List all recognized mood keywords */
 export function getMoodKeywords(): string[] {
   return Object.keys(MOOD_RULES);
+}
+
+// === Seasonal Suggestions ===
+
+const SEASONAL_MOODS: Record<string, string[]> = {
+  WINTER: ["cozy", "dark", "nostalgic", "brainy"],
+  SPRING: ["romantic", "wholesome", "chill", "artistic"],
+  SUMMER: ["hype", "action", "epic", "competitive"],
+  FALL: ["mystery", "scary", "dark", "intense"],
+};
+
+/** Suggest mood keywords that fit the current anime season */
+export function seasonalMoodSuggestions(): {
+  season: string;
+  moods: string[];
+} {
+  const month = new Date().getMonth() + 1;
+  const season =
+    month <= 3
+      ? "WINTER"
+      : month <= 6
+        ? "SPRING"
+        : month <= 9
+          ? "SUMMER"
+          : "FALL";
+  return { season, moods: SEASONAL_MOODS[season] };
 }

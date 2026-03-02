@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchCandidates } from "../../src/engine/matcher.js";
+import { matchCandidates, explainMatch } from "../../src/engine/matcher.js";
 import { buildTasteProfile } from "../../src/engine/taste.js";
 import { parseMood } from "../../src/engine/mood.js";
 import { makeEntry, makeMedia } from "../fixtures.js";
@@ -172,5 +172,100 @@ describe("matchCandidates", () => {
     const reasons = results[0].reasons.join(" ");
 
     expect(reasons).toContain("Time Travel");
+  });
+});
+
+describe("explainMatch", () => {
+  it("returns a detailed breakdown for a matching title", () => {
+    const profile = makeThrillerProfile();
+    const media = makeMedia({ genres: ["Psychological", "Thriller"], id: 200 });
+    const result = explainMatch(media, profile);
+
+    expect(result.breakdown.finalScore).toBeGreaterThan(50);
+    expect(result.matchedGenres).toContain("Psychological");
+    expect(result.matchedGenres).toContain("Thriller");
+    expect(result.reasons.length).toBeGreaterThan(0);
+  });
+
+  it("shows low score for a non-matching title", () => {
+    const profile = makeThrillerProfile();
+    const media = makeMedia({ genres: ["Sports", "Music"], id: 201 });
+    const result = explainMatch(media, profile);
+
+    expect(result.breakdown.finalScore).toBeLessThan(50);
+    expect(result.unmatchedGenres).toContain("Sports");
+    expect(result.unmatchedGenres).toContain("Music");
+  });
+
+  it("does not filter low community score titles", () => {
+    const profile = makeThrillerProfile();
+    const media = makeMedia({
+      genres: ["Psychological"],
+      meanScore: 30,
+      id: 202,
+    });
+    const result = explainMatch(media, profile);
+
+    expect(result.media.id).toBe(202);
+    expect(result.breakdown.communityScore).toBeLessThan(0.5);
+  });
+
+  it("applies mood modifier to breakdown", () => {
+    const profile = makeThrillerProfile();
+    const media = makeMedia({ genres: ["Psychological", "Thriller"], id: 203 });
+    const mood = parseMood("dark and intense");
+    const result = explainMatch(media, profile, mood);
+
+    expect(result.breakdown.moodMultiplier).toBeGreaterThan(1);
+    expect(result.moodFit).toBe("Strong mood match");
+  });
+
+  it("tracks unmatched tags", () => {
+    const profile = makeThrillerProfile();
+    const media = makeMedia({
+      genres: ["Action"],
+      tags: [
+        { name: "Robots", rank: 80, isMediaSpoiler: false },
+        { name: "Space", rank: 70, isMediaSpoiler: false },
+      ],
+      id: 204,
+    });
+    const result = explainMatch(media, profile);
+
+    expect(result.unmatchedTags).toContain("Robots");
+    expect(result.unmatchedTags).toContain("Space");
+  });
+
+  it("excludes spoiler tags from unmatched list", () => {
+    const profile = makeThrillerProfile();
+    const media = makeMedia({
+      genres: ["Action"],
+      tags: [{ name: "Secret Plot", rank: 90, isMediaSpoiler: true }],
+      id: 205,
+    });
+    const result = explainMatch(media, profile);
+
+    expect(result.unmatchedTags).not.toContain("Secret Plot");
+  });
+
+  it("has popularity factor less than 1 for popular titles", () => {
+    const profile = makeThrillerProfile();
+    const media = makeMedia({
+      genres: ["Psychological"],
+      popularity: 200000,
+      id: 206,
+    });
+    const result = explainMatch(media, profile);
+
+    expect(result.breakdown.popularityFactor).toBeLessThan(1);
+  });
+
+  it("returns score on 0-100 scale", () => {
+    const profile = makeThrillerProfile();
+    const media = makeMedia({ genres: ["Psychological", "Thriller"], id: 207 });
+    const result = explainMatch(media, profile);
+
+    expect(result.breakdown.finalScore).toBeGreaterThanOrEqual(0);
+    expect(result.breakdown.finalScore).toBeLessThanOrEqual(100);
   });
 });
