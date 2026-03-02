@@ -15,6 +15,7 @@ jobs:
           node-version: "lts/*"
           cache: npm
       - run: npm ci
+      - run: npm audit --audit-level=moderate
       - run: npm run lint
       - run: npm run type-check
       - run: npm run build
