@@ -29,6 +29,12 @@ export function registerListTools(server: FastMCP): void {
       "what they've completed, or what's on their plan-to-watch. " +
       "Defaults to the configured username if not provided.",
     parameters: ListInputSchema,
+    annotations: {
+      title: "Get User List",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);
@@ -87,6 +93,12 @@ export function registerListTools(server: FastMCP): void {
       "their average score, top genres, or score distribution. " +
       "Shows anime and manga stats side by side.",
     parameters: StatsInputSchema,
+    annotations: {
+      title: "Get User Stats",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);

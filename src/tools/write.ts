@@ -42,6 +42,13 @@ export function registerWriteTools(server: FastMCP): void {
       "Use when the user says they watched an episode, finished a chapter, " +
       "or wants to record how far they are. Requires ANILIST_TOKEN.",
     parameters: UpdateProgressInputSchema,
+    annotations: {
+      title: "Update Progress",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         requireAuth();
@@ -82,6 +89,13 @@ export function registerWriteTools(server: FastMCP): void {
       "Use when the user wants to start watching, plan to watch, " +
       "or mark a title as completed. Requires ANILIST_TOKEN.",
     parameters: AddToListInputSchema,
+    annotations: {
+      title: "Add to List",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         requireAuth();
@@ -122,6 +136,13 @@ export function registerWriteTools(server: FastMCP): void {
       "Use when the user wants to give a rating (0-10). " +
       "Use 0 to remove an existing score. Requires ANILIST_TOKEN.",
     parameters: RateInputSchema,
+    annotations: {
+      title: "Rate Title",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         requireAuth();
@@ -155,6 +176,13 @@ export function registerWriteTools(server: FastMCP): void {
       "Requires the list entry ID (not the media ID) - use anilist_list to find it. " +
       "Requires ANILIST_TOKEN.",
     parameters: DeleteFromListInputSchema,
+    annotations: {
+      title: "Delete from List",
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         requireAuth();

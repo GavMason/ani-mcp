@@ -103,6 +103,12 @@ export function registerRecommendTools(server: FastMCP): void {
       "what genres they like, or how they tend to score. " +
       "Analyzes genre preferences, theme weights, scoring patterns, and format split.",
     parameters: TasteInputSchema,
+    annotations: {
+      title: "Taste Profile",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);
@@ -163,6 +169,12 @@ export function registerRecommendTools(server: FastMCP): void {
       "based on your taste profile. Falls back to top-rated AniList titles " +
       "if the Planning list is empty. Optionally filter by mood or max episodes.",
     parameters: PickInputSchema,
+    annotations: {
+      title: "Pick Next Watch",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);
@@ -294,6 +306,12 @@ export function registerRecommendTools(server: FastMCP): void {
       "and genre divergences. Use when someone asks to compare their taste " +
       "with another user.",
     parameters: CompareInputSchema,
+    annotations: {
+      title: "Compare Users",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         // Fetch both users' completed lists in parallel
@@ -440,6 +458,12 @@ export function registerRecommendTools(server: FastMCP): void {
       "Use when the user asks about their anime/manga year, what they watched/read " +
       "in a given year, or wants a recap. Defaults to the current year.",
     parameters: WrappedInputSchema,
+    annotations: {
+      title: "Year in Review",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);
@@ -576,6 +600,12 @@ export function registerRecommendTools(server: FastMCP): void {
       'Use when the user asks "why would I like this?", "is this for me?", or ' +
       "wants to know how well a specific anime/manga matches their preferences.",
     parameters: ExplainInputSchema,
+    annotations: {
+      title: "Explain Match",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);
@@ -687,6 +717,12 @@ export function registerRecommendTools(server: FastMCP): void {
       "Use when the user asks for shows like a specific title, " +
       "or wants content-based recommendations without needing a user profile.",
     parameters: SimilarInputSchema,
+    annotations: {
+      title: "Find Similar",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         // Fetch source details and recommendations in parallel

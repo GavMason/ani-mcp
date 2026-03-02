@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.svg" width="128" height="128" alt="ani-mcp">
+</p>
+
 # ani-mcp
 
 A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anilist.co) that understands your anime and manga taste - not just raw API calls.
@@ -94,6 +98,29 @@ Works with any MCP-compatible client.
 | `anilist_rate` | Score a title (0-10) |
 | `anilist_delete_from_list` | Remove an entry from your list |
 
+## Examples
+
+Here are some things you can ask your AI assistant once ani-mcp is connected:
+
+**"What should I watch next?"**
+Uses `anilist_pick` to analyze your completed list, build a taste profile, and recommend titles from your Planning list (or discover new ones) ranked by how well they match your preferences.
+
+**"Compare my taste with username123"**
+Uses `anilist_compare` to find shared titles, compute a compatibility score, highlight biggest disagreements, and suggest cross-recommendations between the two profiles.
+
+**"What's airing this season?"**
+Uses `anilist_seasonal` to show the current season's anime lineup sorted by popularity, with scores, genres, and episode counts.
+
+**"Why would I like Vinland Saga?"**
+Uses `anilist_explain` to score a specific title against your taste profile, breaking down genre affinity, theme alignment, and community reception.
+
+**"Show me my anime year in review"**
+Uses `anilist_wrapped` to summarize everything you watched in a given year - titles completed, average score, top genres, most controversial pick, and total episodes.
+
+## Privacy
+
+See [PRIVACY.md](PRIVACY.md) for details. In short: ani-mcp runs locally, sends requests only to the AniList API, stores nothing, and collects no analytics.
+
 ## Docker
 
 ```sh
@@ -112,6 +139,10 @@ npm install
 npm run build
 npm test
 ```
+
+## Support
+
+Bug reports and feature requests: [GitHub Issues](https://github.com/gavxm/ani-mcp/issues)
 
 ## License
 

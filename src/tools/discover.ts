@@ -18,6 +18,12 @@ export function registerDiscoverTools(server: FastMCP): void {
       "Use when the user asks what's hot, trending, or generating buzz. " +
       "No search term needed - returns titles ranked by current trending score.",
     parameters: TrendingInputSchema,
+    annotations: {
+      title: "Trending Now",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const data = await anilistClient.query<TrendingMediaResponse>(
@@ -66,6 +72,12 @@ export function registerDiscoverTools(server: FastMCP): void {
       'e.g. "best romance anime" or "top thriller manga from 2023". ' +
       "No search term needed - discovers by genre with optional year/status/format filters.",
     parameters: GenreBrowseInputSchema,
+    annotations: {
+      title: "Browse by Genre",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const sortMap: Record<string, string[]> = {

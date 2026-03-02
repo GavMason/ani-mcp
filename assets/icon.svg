@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#02A9FF"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- AniList blue background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+
+  <!-- Subtle lighter glow -->
+  <ellipse cx="256" cy="290" rx="200" ry="100" fill="white" opacity="0.08"/>
+
+  <!-- White logotype -->
+  <text x="256" y="320" text-anchor="middle" font-family="'SF Pro Rounded', 'Nunito', system-ui, sans-serif" font-size="200" font-weight="800" fill="white" letter-spacing="-8">
+    ani
+  </text>
+
+  <!-- Sparkle -->
+  <path d="M400 120 L404 135 L419 139 L404 143 L400 158 L396 143 L381 139 L396 135 Z" fill="white" opacity="0.6"/>
+  <circle cx="370" cy="108" r="3" fill="white" opacity="0.35"/>
+</svg>

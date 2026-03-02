@@ -1,0 +1,64 @@
+{
+  "manifest_version": "0.3",
+  "name": "ani-mcp",
+  "version": "0.2.3",
+  "display_name": "AniList MCP",
+  "description": "A smart MCP server for AniList that gets your anime/manga taste - not just API calls.",
+  "author": { "name": "gavxm" },
+  "license": "MIT",
+  "icon": "assets/icon.png",
+  "keywords": ["anime", "manga", "anilist", "recommendations"],
+  "privacy_policies": ["https://github.com/gavxm/ani-mcp/blob/main/PRIVACY.md"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "ANILIST_USERNAME": "${user_config.anilist_username}",
+        "ANILIST_TOKEN": "${user_config.anilist_token}"
+      }
+    }
+  },
+  "user_config": {
+    "anilist_username": {
+      "type": "string",
+      "title": "AniList Username",
+      "description": "Default AniList username for list and stats tools",
+      "required": false
+    },
+    "anilist_token": {
+      "type": "string",
+      "title": "AniList Token",
+      "description": "AniList OAuth token for write operations (update progress, rate, etc.)",
+      "required": false,
+      "sensitive": true
+    }
+  },
+  "tools": [
+    { "name": "anilist_search" },
+    { "name": "anilist_details" },
+    { "name": "anilist_seasonal" },
+    { "name": "anilist_recommendations" },
+    { "name": "anilist_list" },
+    { "name": "anilist_stats" },
+    { "name": "anilist_trending" },
+    { "name": "anilist_genres" },
+    { "name": "anilist_taste" },
+    { "name": "anilist_pick" },
+    { "name": "anilist_compare" },
+    { "name": "anilist_wrapped" },
+    { "name": "anilist_explain" },
+    { "name": "anilist_similar" },
+    { "name": "anilist_staff" },
+    { "name": "anilist_staff_search" },
+    { "name": "anilist_studio_search" },
+    { "name": "anilist_schedule" },
+    { "name": "anilist_characters" },
+    { "name": "anilist_update_progress" },
+    { "name": "anilist_add_to_list" },
+    { "name": "anilist_rate" },
+    { "name": "anilist_delete_from_list" }
+  ]
+}

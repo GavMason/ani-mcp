@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "pack": "npx @anthropic-ai/mcpb pack",
     "release": "git tag v$(node -p \"require('./package.json').version\") && git push origin v$(node -p \"require('./package.json').version\")"
   },
   "keywords": [
@@ -36,7 +37,8 @@
   "homepage": "https://github.com/gavxm/ani-mcp",
   "files": [
     "dist",
-    "server.json"
+    "server.json",
+    "manifest.json"
   ],
   "engines": {
     "node": ">=18"

@@ -50,6 +50,12 @@ export function registerInfoTools(server: FastMCP): void {
       "Use when the user asks who directed, wrote, or voiced characters in a title. " +
       "Shows directors, writers, character designers, and Japanese voice actors.",
     parameters: StaffInputSchema,
+    annotations: {
+      title: "Get Staff Credits",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const variables: Record<string, unknown> = {};
@@ -114,6 +120,12 @@ export function registerInfoTools(server: FastMCP): void {
       "Use when the user asks when the next episode airs, " +
       "or wants to see upcoming episode dates for a currently airing show.",
     parameters: ScheduleInputSchema,
+    annotations: {
+      title: "Airing Schedule",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const variables: Record<string, unknown> = { notYetAired: true };
@@ -186,6 +198,12 @@ export function registerInfoTools(server: FastMCP): void {
       "Use when the user asks about a specific character, wants to know " +
       "which series a character appears in, or who voices them.",
     parameters: CharacterSearchInputSchema,
+    annotations: {
+      title: "Search Characters",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const data = await anilistClient.query<CharacterSearchResponse>(
@@ -249,6 +267,12 @@ export function registerInfoTools(server: FastMCP): void {
       "Use when the user asks about a director, voice actor, animator, or writer " +
       "and wants to see everything they have worked on.",
     parameters: StaffSearchInputSchema,
+    annotations: {
+      title: "Search Staff",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const data = await anilistClient.query<StaffSearchResponse>(
@@ -328,6 +352,12 @@ export function registerInfoTools(server: FastMCP): void {
       "Use when the user asks about a studio like MAPPA, Kyoto Animation, or Bones " +
       "and wants to see what they have produced.",
     parameters: StudioSearchInputSchema,
+    annotations: {
+      title: "Search Studios",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const data = await anilistClient.query<StudioSearchResponse>(

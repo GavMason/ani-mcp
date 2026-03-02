@@ -21,12 +21,13 @@ jobs:
       - run: npm test
       - run: npm run build
 
-      # Sync version from tag into package.json and server.json
+      # Sync version from tag into package.json, server.json, and manifest.json
       - name: Set version from tag
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           npm version $VERSION --no-git-tag-version --allow-same-version
           jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp && mv server.tmp server.json
+          jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
 
       - run: npm publish
         env:
@@ -39,8 +40,12 @@ jobs:
       - run: ./mcp-publisher login github-oidc
       - run: ./mcp-publisher publish
 
+      # MCPB bundle
+      - name: Build MCPB bundle
+        run: npx @anthropic-ai/mcpb pack
+
       # GitHub Release
       - name: Create GitHub Release
-        run: gh release create ${{ github.ref_name }} --generate-notes
+        run: gh release create ${{ github.ref_name }} *.mcpb --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

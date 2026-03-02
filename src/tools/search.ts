@@ -42,6 +42,12 @@ export function registerSearchTools(server: FastMCP): void {
       "in a genre, or find what aired in a specific year. " +
       "Returns a ranked list with title, format, score, genres, and AniList URL.",
     parameters: SearchInputSchema,
+    annotations: {
+      title: "Search Anime/Manga",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const variables: Record<string, unknown> = {
@@ -98,6 +104,12 @@ export function registerSearchTools(server: FastMCP): void {
       "episodes, studios, related works, and recommendations. " +
       "Provide either an AniList ID (faster, exact) or a title (fuzzy match).",
     parameters: DetailsInputSchema,
+    annotations: {
+      title: "Get Title Details",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         // AniList uses "search" as the GraphQL variable name for title lookups
@@ -208,6 +220,12 @@ export function registerSearchTools(server: FastMCP): void {
       "Use when the user asks what's airing this season, what aired in a past season, " +
       "or wants to discover seasonal anime. Defaults to the current season/year.",
     parameters: SeasonalInputSchema,
+    annotations: {
+      title: "Browse Seasonal Anime",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const { season, year } = resolveSeasonYear(args.season, args.year);
@@ -268,6 +286,12 @@ export function registerSearchTools(server: FastMCP): void {
       'or says "I liked X, what else should I watch?" ' +
       "Returns titles recommended by AniList users, sorted by recommendation count.",
     parameters: RecommendationsInputSchema,
+    annotations: {
+      title: "Get Recommendations",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
     execute: async (args) => {
       try {
         const variables: Record<string, unknown> = {
