@@ -20,7 +20,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "pack": "npx @anthropic-ai/mcpb pack",
-    "release": "git tag v$(node -p \"require('./package.json').version\") && git push origin v$(node -p \"require('./package.json').version\")"
+    "release": "./scripts/release.sh"
   },
   "keywords": [
     "mcp",
