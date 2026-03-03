@@ -12,11 +12,14 @@ import {
   RateInputSchema,
   DeleteFromListInputSchema,
 } from "../schemas.js";
+import { VIEWER_QUERY } from "../api/queries.js";
 import type {
   SaveMediaListEntryResponse,
   DeleteMediaListEntryResponse,
+  ViewerResponse,
+  ScoreFormat,
 } from "../types.js";
-import { throwToolError } from "../utils.js";
+import { throwToolError, formatScore } from "../utils.js";
 
 // === Auth Guard ===
 
@@ -26,6 +29,20 @@ function requireAuth(): void {
     throw new Error(
       "ANILIST_TOKEN is not set. Write operations require an authenticated AniList account.",
     );
+  }
+}
+
+// Detect user's score format from env or Viewer query
+async function getScoreFormat(): Promise<ScoreFormat> {
+  const override = process.env.ANILIST_SCORE_FORMAT;
+  if (override) return override as ScoreFormat;
+  try {
+    const data = await anilistClient.query<ViewerResponse>(
+      VIEWER_QUERY, {}, { cache: "stats" },
+    );
+    return data.Viewer.mediaListOptions.scoreFormat;
+  } catch {
+    return "POINT_10";
   }
 }
 
@@ -104,18 +121,21 @@ export function registerWriteTools(server: FastMCP): void {
           mediaId: args.mediaId,
           status: args.status,
         };
-        if (args.score !== undefined) variables.score = args.score;
+        if (args.score !== undefined) variables.scoreRaw = Math.round(args.score * 10);
 
-        const data = await anilistClient.query<SaveMediaListEntryResponse>(
-          SAVE_MEDIA_LIST_ENTRY_MUTATION,
-          variables,
-          { cache: null },
-        );
+        const [data, scoreFmt] = await Promise.all([
+          anilistClient.query<SaveMediaListEntryResponse>(
+            SAVE_MEDIA_LIST_ENTRY_MUTATION,
+            variables,
+            { cache: null },
+          ),
+          getScoreFormat(),
+        ]);
 
         anilistClient.clearCache();
 
         const entry = data.SaveMediaListEntry;
-        const scoreStr = entry.score > 0 ? ` | Score: ${entry.score}/10` : "";
+        const scoreStr = entry.score > 0 ? ` | Score: ${formatScore(entry.score, scoreFmt)}` : "";
         return [
           `Added to list.`,
           `Status: ${entry.status}${scoreStr}`,
@@ -147,11 +167,14 @@ export function registerWriteTools(server: FastMCP): void {
       try {
         requireAuth();
 
-        const data = await anilistClient.query<SaveMediaListEntryResponse>(
-          SAVE_MEDIA_LIST_ENTRY_MUTATION,
-          { mediaId: args.mediaId, score: args.score },
-          { cache: null },
-        );
+        const [data, scoreFmt] = await Promise.all([
+          anilistClient.query<SaveMediaListEntryResponse>(
+            SAVE_MEDIA_LIST_ENTRY_MUTATION,
+            { mediaId: args.mediaId, scoreRaw: Math.round(args.score * 10) },
+            { cache: null },
+          ),
+          getScoreFormat(),
+        ]);
 
         anilistClient.clearCache();
 
@@ -159,7 +182,7 @@ export function registerWriteTools(server: FastMCP): void {
         const scoreDisplay =
           args.score === 0
             ? "Score removed."
-            : `Score set to ${entry.score}/10.`;
+            : `Score set to ${formatScore(entry.score, scoreFmt)}.`;
         return [scoreDisplay, `Entry ID: ${entry.id}`].join("\n");
       } catch (error) {
         return throwToolError(error, "rating");

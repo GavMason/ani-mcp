@@ -48,6 +48,9 @@ Works with any MCP-compatible client.
 | --- | --- | --- |
 | `ANILIST_USERNAME` | No | Default username for list and stats tools. Can also pass per-call. |
 | `ANILIST_TOKEN` | No | AniList OAuth token. Required for write operations and private lists. |
+| `ANILIST_TITLE_LANGUAGE` | No | Title preference: `english` (default), `romaji`, or `native`. |
+| `ANILIST_SCORE_FORMAT` | No | Override score display: `POINT_100`, `POINT_10_DECIMAL`, `POINT_10`, `POINT_5`, `POINT_3`. |
+| `ANILIST_NSFW` | No | Set to `true` to include adult content in results. Default: `false`. |
 | `DEBUG` | No | Set to `true` for debug logging to stderr. |
 | `MCP_TRANSPORT` | No | Set to `http` for HTTP Stream transport. Default: stdio. |
 | `MCP_PORT` | No | Port for HTTP transport. Default: `3000`. |
@@ -64,6 +67,7 @@ Works with any MCP-compatible client.
 | `anilist_seasonal` | Browse a season's anime lineup |
 | `anilist_trending` | What's trending on AniList right now |
 | `anilist_genres` | Browse top titles in a genre with optional filters |
+| `anilist_genre_list` | List all valid genres and content tags |
 | `anilist_recommendations` | Community recommendations for a specific title |
 
 ### Lists & Stats
@@ -93,6 +97,7 @@ Works with any MCP-compatible client.
 | `anilist_studio_search` | Search for a studio and see their productions |
 | `anilist_schedule` | Airing schedule and next episode countdown |
 | `anilist_characters` | Search characters by name with appearances and VAs |
+| `anilist_whoami` | Check authentication status and score format |
 
 ### Write (requires `ANILIST_TOKEN`)
 

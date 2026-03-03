@@ -82,6 +82,9 @@ export function registerInfoTools(server: FastMCP): void {
           { cache: "stats" },
         );
 
+        if (!data.Viewer) {
+          return throwToolError(new Error("No viewer data returned"), "checking authentication");
+        }
         const v = data.Viewer;
         const lines = [
           `Authenticated as: ${v.name}`,

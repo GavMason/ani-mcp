@@ -6,14 +6,19 @@ import { saveEntryHandler, deleteEntryHandler } from "../helpers/handlers.js";
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
 let cleanup: Awaited<ReturnType<typeof createTestClient>>["cleanup"];
 
+// Skip Viewer query in getScoreFormat
+const savedScoreFormat = process.env.ANILIST_SCORE_FORMAT;
 beforeAll(async () => {
   process.env.ANILIST_TOKEN = "test-token";
+  process.env.ANILIST_SCORE_FORMAT = "POINT_10";
   const client = await createTestClient();
   callTool = client.callTool;
   cleanup = client.cleanup;
 });
 
 afterAll(async () => {
+  if (savedScoreFormat === undefined) delete process.env.ANILIST_SCORE_FORMAT;
+  else process.env.ANILIST_SCORE_FORMAT = savedScoreFormat;
   await cleanup();
 });
 
@@ -99,16 +104,16 @@ describe("anilist_add_to_list", () => {
         id: 50,
         mediaId: 10,
         status: "COMPLETED",
-        score: 8.5,
+        score: 8,
         progress: 0,
       }),
     );
     const result = await callTool("anilist_add_to_list", {
       mediaId: 10,
       status: "COMPLETED",
-      score: 8.5,
+      score: 8,
     });
-    expect(result).toContain("Score: 8.5/10");
+    expect(result).toContain("Score: 8/10");
   });
 
   it("errors when ANILIST_TOKEN is missing", async () => {

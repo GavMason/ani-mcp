@@ -385,7 +385,7 @@ export const SAVE_MEDIA_LIST_ENTRY_MUTATION = `
   mutation SaveMediaListEntry(
     $mediaId: Int
     $status: MediaListStatus
-    $score: Float
+    $scoreRaw: Int
     $progress: Int
     $notes: String
     $private: Boolean
@@ -393,7 +393,7 @@ export const SAVE_MEDIA_LIST_ENTRY_MUTATION = `
     SaveMediaListEntry(
       mediaId: $mediaId
       status: $status
-      score: $score
+      scoreRaw: $scoreRaw
       progress: $progress
       notes: $notes
       private: $private
