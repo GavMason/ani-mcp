@@ -144,6 +144,19 @@ export function formatMediaSummary(media: AniListMedia): string {
   return lines.join("\n");
 }
 
+/** Detect score format from env override or API fallback */
+export async function detectScoreFormat(
+  fetchFormat: () => Promise<ScoreFormat>,
+): Promise<ScoreFormat> {
+  const override = process.env.ANILIST_SCORE_FORMAT;
+  if (override) return override as ScoreFormat;
+  try {
+    return await fetchFormat();
+  } catch {
+    return "POINT_10";
+  }
+}
+
 /** Display a normalized 0-10 score in the user's preferred format */
 export function formatScore(score10: number, format: ScoreFormat): string {
   if (score10 <= 0) return "Unscored";

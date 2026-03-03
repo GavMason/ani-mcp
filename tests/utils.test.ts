@@ -10,6 +10,7 @@ import {
   isNsfwEnabled,
   resolveAlias,
   formatScore,
+  detectScoreFormat,
 } from "../src/utils.js";
 import { makeMedia } from "./fixtures.js";
 
@@ -268,6 +269,40 @@ describe("resolveAlias", () => {
     expect(resolveAlias("csm")).toBe("Chainsaw Man");
     expect(resolveAlias("hxh")).toBe("Hunter x Hunter");
     expect(resolveAlias("mha")).toBe("My Hero Academia");
+  });
+});
+
+describe("detectScoreFormat", () => {
+  afterEach(() => {
+    delete process.env.ANILIST_SCORE_FORMAT;
+  });
+
+  it("returns env override when set", async () => {
+    process.env.ANILIST_SCORE_FORMAT = "POINT_100";
+    const result = await detectScoreFormat(async () => "POINT_5");
+    expect(result).toBe("POINT_100");
+  });
+
+  it("calls fetcher when no env override", async () => {
+    const result = await detectScoreFormat(async () => "POINT_5");
+    expect(result).toBe("POINT_5");
+  });
+
+  it("falls back to POINT_10 when fetcher throws", async () => {
+    const result = await detectScoreFormat(async () => {
+      throw new Error("API error");
+    });
+    expect(result).toBe("POINT_10");
+  });
+
+  it("skips fetcher when env override is set", async () => {
+    process.env.ANILIST_SCORE_FORMAT = "POINT_3";
+    let called = false;
+    await detectScoreFormat(async () => {
+      called = true;
+      return "POINT_5";
+    });
+    expect(called).toBe(false);
   });
 });
 

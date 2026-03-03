@@ -16,6 +16,7 @@ import {
   throwToolError,
   paginationFooter,
   formatScore,
+  detectScoreFormat,
 } from "../utils.js";
 
 // Map user-friendly sort names to AniList's internal enum values
@@ -51,7 +52,14 @@ export function registerListTools(server: FastMCP): void {
         const status = args.status !== "ALL" ? args.status : undefined;
         const [allEntries, scoreFormat] = await Promise.all([
           anilistClient.fetchList(username, args.type, status, sort),
-          detectScoreFormat(username),
+          detectScoreFormat(async () => {
+            const data = await anilistClient.query<UserStatsResponse>(
+              USER_STATS_QUERY,
+              { name: username },
+              { cache: "stats" },
+            );
+            return data.User.mediaListOptions.scoreFormat;
+          }),
         ]);
 
         if (!allEntries.length) {
@@ -148,21 +156,6 @@ export function registerListTools(server: FastMCP): void {
   });
 }
 
-/** Detect user's score format from env override or AniList profile */
-async function detectScoreFormat(username: string): Promise<ScoreFormat> {
-  const override = process.env.ANILIST_SCORE_FORMAT;
-  if (override) return override as ScoreFormat;
-  try {
-    const data = await anilistClient.query<UserStatsResponse>(
-      USER_STATS_QUERY,
-      { name: username },
-      { cache: "stats" },
-    );
-    return data.User.mediaListOptions.scoreFormat;
-  } catch {
-    return "POINT_10";
-  }
-}
 
 /** Format statistics for a single media type (anime or manga) */
 function formatTypeStats(stats: MediaTypeStats, label: string): string[] {

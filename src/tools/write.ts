@@ -5,6 +5,7 @@ import { anilistClient } from "../api/client.js";
 import {
   SAVE_MEDIA_LIST_ENTRY_MUTATION,
   DELETE_MEDIA_LIST_ENTRY_MUTATION,
+  VIEWER_QUERY,
 } from "../api/queries.js";
 import {
   UpdateProgressInputSchema,
@@ -12,14 +13,12 @@ import {
   RateInputSchema,
   DeleteFromListInputSchema,
 } from "../schemas.js";
-import { VIEWER_QUERY } from "../api/queries.js";
 import type {
   SaveMediaListEntryResponse,
   DeleteMediaListEntryResponse,
   ViewerResponse,
-  ScoreFormat,
 } from "../types.js";
-import { throwToolError, formatScore } from "../utils.js";
+import { throwToolError, formatScore, detectScoreFormat } from "../utils.js";
 
 // === Auth Guard ===
 
@@ -29,20 +28,6 @@ function requireAuth(): void {
     throw new Error(
       "ANILIST_TOKEN is not set. Write operations require an authenticated AniList account.",
     );
-  }
-}
-
-// Detect user's score format from env or Viewer query
-async function getScoreFormat(): Promise<ScoreFormat> {
-  const override = process.env.ANILIST_SCORE_FORMAT;
-  if (override) return override as ScoreFormat;
-  try {
-    const data = await anilistClient.query<ViewerResponse>(
-      VIEWER_QUERY, {}, { cache: "stats" },
-    );
-    return data.Viewer.mediaListOptions.scoreFormat;
-  } catch {
-    return "POINT_10";
   }
 }
 
@@ -129,7 +114,12 @@ export function registerWriteTools(server: FastMCP): void {
             variables,
             { cache: null },
           ),
-          getScoreFormat(),
+          detectScoreFormat(async () => {
+            const data = await anilistClient.query<ViewerResponse>(
+              VIEWER_QUERY, {}, { cache: "stats" },
+            );
+            return data.Viewer.mediaListOptions.scoreFormat;
+          }),
         ]);
 
         anilistClient.clearCache();
@@ -173,7 +163,12 @@ export function registerWriteTools(server: FastMCP): void {
             { mediaId: args.mediaId, scoreRaw: Math.round(args.score * 10) },
             { cache: null },
           ),
-          getScoreFormat(),
+          detectScoreFormat(async () => {
+            const data = await anilistClient.query<ViewerResponse>(
+              VIEWER_QUERY, {}, { cache: "stats" },
+            );
+            return data.Viewer.mediaListOptions.scoreFormat;
+          }),
         ]);
 
         anilistClient.clearCache();
