@@ -156,7 +156,6 @@ export function registerListTools(server: FastMCP): void {
   });
 }
 
-
 /** Format statistics for a single media type (anime or manga) */
 function formatTypeStats(stats: MediaTypeStats, label: string): string[] {
   const lines: string[] = [`## ${label}`];

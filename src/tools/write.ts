@@ -106,7 +106,8 @@ export function registerWriteTools(server: FastMCP): void {
           mediaId: args.mediaId,
           status: args.status,
         };
-        if (args.score !== undefined) variables.scoreRaw = Math.round(args.score * 10);
+        if (args.score !== undefined)
+          variables.scoreRaw = Math.round(args.score * 10);
 
         const [data, scoreFmt] = await Promise.all([
           anilistClient.query<SaveMediaListEntryResponse>(
@@ -116,7 +117,9 @@ export function registerWriteTools(server: FastMCP): void {
           ),
           detectScoreFormat(async () => {
             const data = await anilistClient.query<ViewerResponse>(
-              VIEWER_QUERY, {}, { cache: "stats" },
+              VIEWER_QUERY,
+              {},
+              { cache: "stats" },
             );
             return data.Viewer.mediaListOptions.scoreFormat;
           }),
@@ -125,7 +128,10 @@ export function registerWriteTools(server: FastMCP): void {
         anilistClient.clearCache();
 
         const entry = data.SaveMediaListEntry;
-        const scoreStr = entry.score > 0 ? ` | Score: ${formatScore(entry.score, scoreFmt)}` : "";
+        const scoreStr =
+          entry.score > 0
+            ? ` | Score: ${formatScore(entry.score, scoreFmt)}`
+            : "";
         return [
           `Added to list.`,
           `Status: ${entry.status}${scoreStr}`,
@@ -165,7 +171,9 @@ export function registerWriteTools(server: FastMCP): void {
           ),
           detectScoreFormat(async () => {
             const data = await anilistClient.query<ViewerResponse>(
-              VIEWER_QUERY, {}, { cache: "stats" },
+              VIEWER_QUERY,
+              {},
+              { cache: "stats" },
             );
             return data.Viewer.mediaListOptions.scoreFormat;
           }),

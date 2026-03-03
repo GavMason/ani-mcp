@@ -83,7 +83,10 @@ export function registerInfoTools(server: FastMCP): void {
         );
 
         if (!data.Viewer) {
-          return throwToolError(new Error("No viewer data returned"), "checking authentication");
+          return throwToolError(
+            new Error("No viewer data returned"),
+            "checking authentication",
+          );
         }
         const v = data.Viewer;
         const lines = [

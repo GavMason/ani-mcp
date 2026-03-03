@@ -624,9 +624,13 @@ export function registerRecommendTools(server: FastMCP): void {
 
         // Fetch media details and taste profile in parallel
         const [mediaData, { profile, entries }] = await Promise.all([
-          anilistClient.query<MediaDetailsResponse>(MEDIA_DETAILS_QUERY, {
-            id: args.mediaId,
-          }, { cache: "media" }),
+          anilistClient.query<MediaDetailsResponse>(
+            MEDIA_DETAILS_QUERY,
+            {
+              id: args.mediaId,
+            },
+            { cache: "media" },
+          ),
           profileForUser(username, args.type),
         ]);
 
@@ -739,13 +743,21 @@ export function registerRecommendTools(server: FastMCP): void {
       try {
         // Fetch source details and recommendations in parallel
         const [detailsData, recsData] = await Promise.all([
-          anilistClient.query<MediaDetailsResponse>(MEDIA_DETAILS_QUERY, {
-            id: args.mediaId,
-          }, { cache: "media" }),
-          anilistClient.query<RecommendationsResponse>(RECOMMENDATIONS_QUERY, {
-            id: args.mediaId,
-            perPage: 25,
-          }, { cache: "media" }),
+          anilistClient.query<MediaDetailsResponse>(
+            MEDIA_DETAILS_QUERY,
+            {
+              id: args.mediaId,
+            },
+            { cache: "media" },
+          ),
+          anilistClient.query<RecommendationsResponse>(
+            RECOMMENDATIONS_QUERY,
+            {
+              id: args.mediaId,
+              perPage: 25,
+            },
+            { cache: "media" },
+          ),
         ]);
 
         const source = detailsData.Media;
