@@ -25,6 +25,8 @@ import {
   throwToolError,
   formatMediaSummary,
   paginationFooter,
+  isNsfwEnabled,
+  resolveAlias,
 } from "../utils.js";
 
 // Default to popularity for broad queries
@@ -50,8 +52,9 @@ export function registerSearchTools(server: FastMCP): void {
     },
     execute: async (args) => {
       try {
+        const query = resolveAlias(args.query);
         const variables: Record<string, unknown> = {
-          search: args.query,
+          search: query,
           type: args.type,
           page: args.page,
           perPage: args.limit,
@@ -88,8 +91,15 @@ export function registerSearchTools(server: FastMCP): void {
           (m, i) => `${offset + i + 1}. ${formatMediaSummary(m)}`,
         );
 
-        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
-        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
+        const footer = paginationFooter(
+          args.page,
+          args.limit,
+          pageInfo.total,
+          pageInfo.hasNextPage,
+        );
+        return (
+          header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "")
+        );
       } catch (error) {
         return throwToolError(error, "searching");
       }
@@ -102,7 +112,8 @@ export function registerSearchTools(server: FastMCP): void {
       "Get full details about a specific anime or manga. " +
       "Use when the user asks about a specific title and wants synopsis, score, " +
       "episodes, studios, related works, and recommendations. " +
-      "Provide either an AniList ID (faster, exact) or a title (fuzzy match).",
+      "Provide either an AniList ID (faster, exact) or a title (fuzzy match). " +
+      "Title search works with English, romaji, native names, and common abbreviations (e.g. 'aot', 'jjk').",
     parameters: DetailsInputSchema,
     annotations: {
       title: "Get Title Details",
@@ -112,10 +123,9 @@ export function registerSearchTools(server: FastMCP): void {
     },
     execute: async (args) => {
       try {
-        // AniList uses "search" as the GraphQL variable name for title lookups
         const variables: Record<string, unknown> = {};
         if (args.id) variables.id = args.id;
-        if (args.title) variables.search = args.title;
+        if (args.title) variables.search = resolveAlias(args.title);
 
         const data = await anilistClient.query<MediaDetailsResponse>(
           MEDIA_DETAILS_QUERY,
@@ -268,8 +278,15 @@ export function registerSearchTools(server: FastMCP): void {
           (m, i) => `${offset + i + 1}. ${formatMediaSummary(m)}`,
         );
 
-        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
-        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
+        const footer = paginationFooter(
+          args.page,
+          args.limit,
+          pageInfo.total,
+          pageInfo.hasNextPage,
+        );
+        return (
+          header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "")
+        );
       } catch (error) {
         return throwToolError(error, "browsing seasonal anime");
       }
@@ -308,8 +325,12 @@ export function registerSearchTools(server: FastMCP): void {
 
         const source = data.Media;
         const sourceTitle = getTitle(source.title);
+        const nsfw = isNsfwEnabled();
         const recs = source.recommendations.nodes.filter(
-          (n) => n.mediaRecommendation && n.rating > 0,
+          (n) =>
+            n.mediaRecommendation &&
+            n.rating > 0 &&
+            (nsfw || !n.mediaRecommendation.isAdult),
         );
 
         if (!recs.length) {

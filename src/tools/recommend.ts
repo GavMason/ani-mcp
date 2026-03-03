@@ -22,7 +22,12 @@ import type {
   AniListMediaListEntry,
   AniListMedia,
 } from "../types.js";
-import { getTitle, getDefaultUsername, throwToolError } from "../utils.js";
+import {
+  getTitle,
+  getDefaultUsername,
+  throwToolError,
+  isNsfwEnabled,
+} from "../utils.js";
 import {
   buildTasteProfile,
   describeTasteProfile,
@@ -57,6 +62,7 @@ async function discoverByTaste(
   const topGenres = profile.genres.slice(0, 3).map((g) => g.name);
   if (topGenres.length === 0) return [];
 
+  const nsfw = isNsfwEnabled();
   const data = await anilistClient.query<SearchMediaResponse>(
     DISCOVER_MEDIA_QUERY,
     {
@@ -64,6 +70,7 @@ async function discoverByTaste(
       genre_in: topGenres,
       perPage: 30,
       sort: ["SCORE_DESC"],
+      ...(nsfw ? {} : { isAdult: false }),
     },
     { cache: "search" },
   );
@@ -203,6 +210,11 @@ export function registerRecommendTools(server: FastMCP): void {
           candidates = await discoverByTaste(profile, args.type, completedIds);
         } else {
           candidates = planning.map((e) => e.media);
+        }
+
+        // Filter adult content unless enabled
+        if (!isNsfwEnabled()) {
+          candidates = candidates.filter((m) => !m.isAdult);
         }
 
         // Optionally filter by episode count
@@ -740,11 +752,13 @@ export function registerRecommendTools(server: FastMCP): void {
         const sourceTitle = getTitle(source.title);
 
         // Build candidate list and rec rating map
+        const nsfw = isNsfwEnabled();
         const candidates: AniListMedia[] = [];
         const recRatings = new Map<number, number>();
 
         for (const node of recsData.Media.recommendations.nodes) {
           if (!node.mediaRecommendation) continue;
+          if (!nsfw && node.mediaRecommendation.isAdult) continue;
           candidates.push(node.mediaRecommendation);
           if (node.rating > 0) {
             recRatings.set(node.mediaRecommendation.id, node.rating);
