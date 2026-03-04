@@ -43,6 +43,7 @@ export function registerSocialTools(server: FastMCP): void {
       title: "Activity Feed",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: true,
     },
     execute: async (args) => {
@@ -107,6 +108,7 @@ export function registerSocialTools(server: FastMCP): void {
       title: "User Profile",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: true,
     },
     execute: async (args) => {
@@ -144,6 +146,7 @@ export function registerSocialTools(server: FastMCP): void {
       title: "Community Reviews",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: true,
     },
     execute: async (args) => {
@@ -222,9 +225,7 @@ export function registerSocialTools(server: FastMCP): void {
 // === Formatting Helpers ===
 
 /** Format a user profile as text */
-export function formatProfile(
-  user: UserProfileResponse["User"],
-): string {
+export function formatProfile(user: UserProfileResponse["User"]): string {
   const lines: string[] = [`# ${user.name}`, user.siteUrl, ""];
 
   // About/bio
@@ -272,22 +273,20 @@ export function formatProfile(
   }
   if (fav.staff.nodes.length) {
     lines.push(
-      "Favourite Staff: " +
-        fav.staff.nodes.map((n) => n.name.full).join(", "),
+      "Favourite Staff: " + fav.staff.nodes.map((n) => n.name.full).join(", "),
     );
   }
   if (fav.studios.nodes.length) {
     lines.push(
-      "Favourite Studios: " +
-        fav.studios.nodes.map((n) => n.name).join(", "),
+      "Favourite Studios: " + fav.studios.nodes.map((n) => n.name).join(", "),
     );
   }
 
   // Account age
-  const created = new Date(user.createdAt * 1000).toLocaleDateString(
-    "en-US",
-    { month: "short", year: "numeric" },
-  );
+  const created = new Date(user.createdAt * 1000).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
   lines.push("", `Member since ${created}`);
 
   return lines.join("\n");

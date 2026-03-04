@@ -70,9 +70,7 @@ export function rankSimilar(
     const recBoost = rating > 0 ? rating / maxRating : 0;
 
     if (rating > 0) {
-      reasons.push(
-        `Recommended by community (${rating > 0 ? "+" : ""}${rating})`,
-      );
+      reasons.push(`Recommended by community (+${rating})`);
     }
 
     const score =

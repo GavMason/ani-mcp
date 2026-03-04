@@ -10,10 +10,7 @@ import {
 } from "./engine/taste.js";
 import { formatProfile } from "./tools/social.js";
 import { formatListEntry } from "./tools/lists.js";
-import type {
-  UserProfileResponse,
-  UserStatsResponse,
-} from "./types.js";
+import type { UserProfileResponse, UserStatsResponse } from "./types.js";
 import { getDefaultUsername, detectScoreFormat } from "./utils.js";
 
 /** Register MCP resources on the server */
@@ -23,17 +20,22 @@ export function registerResources(server: FastMCP): void {
   server.addResource({
     uri: "anilist://profile",
     name: "User Profile",
-    description:
-      "AniList profile with bio, anime/manga stats, and favourites.",
+    description: "AniList profile with bio, anime/manga stats, and favourites.",
     mimeType: "text/plain",
     async load() {
-      const username = getDefaultUsername();
-      const data = await anilistClient.query<UserProfileResponse>(
-        USER_PROFILE_QUERY,
-        { name: username },
-        { cache: "stats" },
-      );
-      return { text: formatProfile(data.User) };
+      try {
+        const username = getDefaultUsername();
+        const data = await anilistClient.query<UserProfileResponse>(
+          USER_PROFILE_QUERY,
+          { name: username },
+          { cache: "stats" },
+        );
+        return { text: formatProfile(data.User) };
+      } catch (err) {
+        return {
+          text: `Error loading profile: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
     },
   });
 
@@ -53,15 +55,21 @@ export function registerResources(server: FastMCP): void {
       },
     ],
     async load({ type }) {
-      const username = getDefaultUsername();
-      const mediaType = String(type).toUpperCase();
-      const entries = await anilistClient.fetchList(
-        username,
-        mediaType,
-        "COMPLETED",
-      );
-      const profile = buildTasteProfile(entries);
-      return { text: formatTasteProfile(profile, username) };
+      try {
+        const username = getDefaultUsername();
+        const mediaType = String(type).toUpperCase();
+        const entries = await anilistClient.fetchList(
+          username,
+          mediaType,
+          "COMPLETED",
+        );
+        const profile = buildTasteProfile(entries);
+        return { text: formatTasteProfile(profile, username) };
+      } catch (err) {
+        return {
+          text: `Error loading taste profile: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
     },
   });
 
@@ -81,33 +89,39 @@ export function registerResources(server: FastMCP): void {
       },
     ],
     async load({ type }) {
-      const username = getDefaultUsername();
-      const mediaType = String(type).toUpperCase();
+      try {
+        const username = getDefaultUsername();
+        const mediaType = String(type).toUpperCase();
 
-      const [entries, scoreFormat] = await Promise.all([
-        anilistClient.fetchList(username, mediaType, "CURRENT"),
-        detectScoreFormat(async () => {
-          const data = await anilistClient.query<UserStatsResponse>(
-            USER_STATS_QUERY,
-            { name: username },
-            { cache: "stats" },
-          );
-          return data.User.mediaListOptions.scoreFormat;
-        }),
-      ]);
+        const [entries, scoreFormat] = await Promise.all([
+          anilistClient.fetchList(username, mediaType, "CURRENT"),
+          detectScoreFormat(async () => {
+            const data = await anilistClient.query<UserStatsResponse>(
+              USER_STATS_QUERY,
+              { name: username },
+              { cache: "stats" },
+            );
+            return data.User.mediaListOptions.scoreFormat;
+          }),
+        ]);
 
-      if (!entries.length) {
+        if (!entries.length) {
+          return {
+            text: `${username} has no current ${mediaType.toLowerCase()} entries.`,
+          };
+        }
+
+        const header = `${username}'s current ${mediaType.toLowerCase()} - ${entries.length} entries`;
+        const formatted = entries.map((entry, i) =>
+          formatListEntry(entry, i + 1, scoreFormat),
+        );
+
+        return { text: [header, "", ...formatted].join("\n\n") };
+      } catch (err) {
         return {
-          text: `${username} has no current ${mediaType.toLowerCase()} entries.`,
+          text: `Error loading list: ${err instanceof Error ? err.message : String(err)}`,
         };
       }
-
-      const header = `${username}'s current ${mediaType.toLowerCase()} - ${entries.length} entries`;
-      const formatted = entries.map((entry, i) =>
-        formatListEntry(entry, i + 1, scoreFormat),
-      );
-
-      return { text: [header, "", ...formatted].join("\n\n") };
     },
   });
 }
@@ -126,9 +140,7 @@ function formatTasteProfile(profile: TasteProfile, username: string): string {
   if (profile.genres.length > 0) {
     lines.push("", "Genre Weights (higher = stronger preference):");
     for (const g of profile.genres.slice(0, 10)) {
-      lines.push(
-        `  ${g.name}: ${g.weight.toFixed(2)} (${g.count} titles)`,
-      );
+      lines.push(`  ${g.name}: ${g.weight.toFixed(2)} (${g.count} titles)`);
     }
   }
 
@@ -136,9 +148,7 @@ function formatTasteProfile(profile: TasteProfile, username: string): string {
   if (profile.tags.length > 0) {
     lines.push("", "Top Themes:");
     for (const t of profile.tags.slice(0, 10)) {
-      lines.push(
-        `  ${t.name}: ${t.weight.toFixed(2)} (${t.count} titles)`,
-      );
+      lines.push(`  ${t.name}: ${t.weight.toFixed(2)} (${t.count} titles)`);
     }
   }
 

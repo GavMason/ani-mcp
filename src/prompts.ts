@@ -95,10 +95,9 @@ export function registerPrompts(server: FastMCP): void {
     ],
     async load({ username }) {
       const target = username ?? "my";
-      const userClause =
-        username
-          ? `Use anilist_taste for ${username}`
-          : "Use anilist_taste for me";
+      const userClause = username
+        ? `Use anilist_taste for ${username}`
+        : "Use anilist_taste for me";
       return {
         messages: [
           {

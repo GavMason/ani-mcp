@@ -328,14 +328,14 @@ describe("formatScore", () => {
   });
 
   it("formats POINT_3 high score", () => {
-    expect(formatScore(9, "POINT_3")).toBe("🙂");
+    expect(formatScore(9, "POINT_3")).toBe(":)");
   });
 
   it("formats POINT_3 mid score", () => {
-    expect(formatScore(5, "POINT_3")).toBe("😐");
+    expect(formatScore(5, "POINT_3")).toBe(":|");
   });
 
   it("formats POINT_3 low score", () => {
-    expect(formatScore(2, "POINT_3")).toBe("🙁");
+    expect(formatScore(2, "POINT_3")).toBe(":(");
   });
 });

@@ -211,6 +211,9 @@ export function registerRecommendTools(server: FastMCP): void {
         let sourceLabel: string;
 
         if (source === "SEASONAL") {
+          if (args.type === "MANGA") {
+            return "SEASONAL source only works with anime. Use PLANNING or DISCOVER for manga recommendations.";
+          }
           const { season, year } = resolveSeasonYear(args.season, args.year);
           sourceLabel = `${season} ${year} seasonal anime`;
           candidatePromise = (async () => {

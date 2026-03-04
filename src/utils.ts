@@ -196,9 +196,9 @@ export function formatScore(score10: number, format: ScoreFormat): string {
       return "★".repeat(stars) + "☆".repeat(5 - stars);
     }
     case "POINT_3": {
-      if (score10 >= 7) return "🙂";
-      if (score10 >= 4) return "😐";
-      return "🙁";
+      if (score10 >= 7) return ":)";
+      if (score10 >= 4) return ":|";
+      return ":(";
     }
     default:
       return `${score10}/10`;
