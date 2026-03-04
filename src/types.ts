@@ -401,7 +401,11 @@ export interface ListActivity {
   user: { name: string };
   media: {
     id: number;
-    title: { romaji: string | null; english: string | null; native: string | null };
+    title: {
+      romaji: string | null;
+      english: string | null;
+      native: string | null;
+    };
     type: string;
   };
 }
@@ -430,14 +434,48 @@ export interface UserProfileResponse {
     updatedAt: number;
     donatorTier: number;
     statistics: {
-      anime: { count: number; meanScore: number; episodesWatched: number; minutesWatched: number };
-      manga: { count: number; meanScore: number; chaptersRead: number; volumesRead: number };
+      anime: {
+        count: number;
+        meanScore: number;
+        episodesWatched: number;
+        minutesWatched: number;
+      };
+      manga: {
+        count: number;
+        meanScore: number;
+        chaptersRead: number;
+        volumesRead: number;
+      };
     };
     favourites: {
-      anime: { nodes: Array<{ id: number; title: { romaji: string | null; english: string | null; native: string | null }; siteUrl: string }> };
-      manga: { nodes: Array<{ id: number; title: { romaji: string | null; english: string | null; native: string | null }; siteUrl: string }> };
-      characters: { nodes: Array<{ id: number; name: { full: string }; siteUrl: string }> };
-      staff: { nodes: Array<{ id: number; name: { full: string }; siteUrl: string }> };
+      anime: {
+        nodes: Array<{
+          id: number;
+          title: {
+            romaji: string | null;
+            english: string | null;
+            native: string | null;
+          };
+          siteUrl: string;
+        }>;
+      };
+      manga: {
+        nodes: Array<{
+          id: number;
+          title: {
+            romaji: string | null;
+            english: string | null;
+            native: string | null;
+          };
+          siteUrl: string;
+        }>;
+      };
+      characters: {
+        nodes: Array<{ id: number; name: { full: string }; siteUrl: string }>;
+      };
+      staff: {
+        nodes: Array<{ id: number; name: { full: string }; siteUrl: string }>;
+      };
       studios: { nodes: Array<{ id: number; name: string; siteUrl: string }> };
     };
   };
@@ -447,7 +485,11 @@ export interface UserProfileResponse {
 export interface MediaReviewsResponse {
   Media: {
     id: number;
-    title: { romaji: string | null; english: string | null; native: string | null };
+    title: {
+      romaji: string | null;
+      english: string | null;
+      native: string | null;
+    };
     reviews: {
       pageInfo: { total: number; hasNextPage: boolean };
       nodes: Array<{

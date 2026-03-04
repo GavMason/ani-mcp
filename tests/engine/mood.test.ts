@@ -139,9 +139,12 @@ describe("new mood keywords", () => {
 describe("parseMoodFilters", () => {
   it("returns genre and tag arrays from mood string", () => {
     const filters = parseMoodFilters("dark");
+    // AniList genres
     expect(filters.genres).toContain("Psychological");
     expect(filters.genres).toContain("Thriller");
-    expect(filters.tags).toContain("Psychological");
+    // AniList tags
+    expect(filters.tags).toContain("Tragedy");
+    expect(filters.tags).not.toContain("Psychological");
   });
 
   it("merges multiple keywords into combined arrays", () => {

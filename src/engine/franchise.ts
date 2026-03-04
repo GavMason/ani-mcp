@@ -88,7 +88,7 @@ export function buildWatchOrder(
   const entries: FranchiseEntry[] = [];
   const visited = new Set<number>();
 
-  // BFS forward through SEQUEL (and optionally SIDE_STORY/SPIN_OFF) edges
+  // BFS through sequel and side-story edges
   const queue: number[] = [rootId];
   let depth = 0;
 

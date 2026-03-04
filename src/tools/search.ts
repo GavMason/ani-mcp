@@ -365,4 +365,3 @@ export function registerSearchTools(server: FastMCP): void {
     },
   });
 }
-

@@ -52,10 +52,7 @@ import {
   findCrossRecs,
 } from "../engine/compare.js";
 import { rankSimilar } from "../engine/similar.js";
-import {
-  buildWatchOrder,
-  type RelationNode,
-} from "../engine/franchise.js";
+import { buildWatchOrder, type RelationNode } from "../engine/franchise.js";
 
 // User scores are normalized to 1-10 via score(format: POINT_10) in the list query.
 // Community meanScore is 0-100. Multiply user score by 10 to compare on the same scale.
@@ -203,14 +200,18 @@ export function registerRecommendTools(server: FastMCP): void {
         const source = args.source;
 
         // Completed list for taste profile
-        const completedPromise = anilistClient.fetchList(username, profileType, "COMPLETED");
+        const completedPromise = anilistClient.fetchList(
+          username,
+          profileType,
+          "COMPLETED",
+        );
 
         // Candidate source depends on mode
         let candidatePromise: Promise<AniListMedia[]>;
         let sourceLabel: string;
 
         if (source === "SEASONAL") {
-          const { season, year } = resolveSeasonYear(args.season, args.seasonYear);
+          const { season, year } = resolveSeasonYear(args.season, args.year);
           sourceLabel = `${season} ${year} seasonal anime`;
           candidatePromise = (async () => {
             const data = await anilistClient.query<SearchMediaResponse>(
@@ -257,7 +258,8 @@ export function registerRecommendTools(server: FastMCP): void {
         }
 
         // For PLANNING source, fall back to discover when list is empty
-        const fromDiscovery = source === "PLANNING" && candidateMedia.length === 0;
+        const fromDiscovery =
+          source === "PLANNING" && candidateMedia.length === 0;
         let candidates: AniListMedia[];
 
         if (fromDiscovery) {
@@ -305,7 +307,9 @@ export function registerRecommendTools(server: FastMCP): void {
         const lines: string[] = [
           `# Top Picks for ${username}`,
           `Based on ${completed.length} completed ${profileType.toLowerCase()} titles` +
-            (crossMedia ? ` (cross-media: ${profileType.toLowerCase()} taste -> ${args.type.toLowerCase()} picks)` : "") +
+            (crossMedia
+              ? ` (cross-media: ${profileType.toLowerCase()} taste -> ${args.type.toLowerCase()} picks)`
+              : "") +
             (results.length > picks.length
               ? ` (showing ${picks.length} of ${results.length} matches)`
               : ""),
@@ -391,7 +395,6 @@ export function registerRecommendTools(server: FastMCP): void {
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);
-        const DEFAULT_DURATION = 24;
 
         // CURRENT list for candidates, COMPLETED list for taste profile
         const [current, completed] = await Promise.all([
@@ -407,16 +410,18 @@ export function registerRecommendTools(server: FastMCP): void {
         const mood = args.mood ? parseMood(args.mood) : undefined;
 
         // Score each current entry
+        const isManga = args.type === "MANGA";
+        const defaultUnit = isManga ? 5 : 24;
         const candidates = current.map((entry) => {
           const m = entry.media;
-          const remaining = m.episodes ? m.episodes - entry.progress : null;
-          const epDuration = m.duration ?? DEFAULT_DURATION;
-          const timeLeft = remaining !== null ? remaining * epDuration : null;
+          const totalUnits = isManga ? m.chapters : m.episodes;
+          const remaining = totalUnits ? totalUnits - entry.progress : null;
+          const unitDuration = m.duration ?? defaultUnit;
 
           const results = matchCandidates([m], profile, mood);
           const matchScore = results.length > 0 ? results[0].score : 50;
 
-          return { entry, remaining, epDuration, timeLeft, matchScore };
+          return { entry, remaining, unitDuration, matchScore };
         });
 
         // Sort by match score descending
@@ -433,25 +438,25 @@ export function registerRecommendTools(server: FastMCP): void {
 
         for (const c of candidates) {
           if (budget <= 0) break;
-          const epDuration = c.epDuration;
-          if (epDuration > budget) continue;
+          const unitDuration = c.unitDuration;
+          if (unitDuration > budget) continue;
 
-          // How many episodes fit in remaining budget
-          const maxEps = Math.floor(budget / epDuration);
-          const availableEps = c.remaining !== null
-            ? Math.min(maxEps, c.remaining)
-            : maxEps;
+          // How many units fit in remaining budget
+          const maxUnits = Math.floor(budget / unitDuration);
+          const availableUnits =
+            c.remaining !== null ? Math.min(maxUnits, c.remaining) : maxUnits;
 
-          if (availableEps <= 0) continue;
+          if (availableUnits <= 0) continue;
 
-          const time = availableEps * epDuration;
+          const time = availableUnits * unitDuration;
           const title = getTitle(c.entry.media.title);
-          const total = c.entry.media.episodes ?? "?";
-          const newProgress = c.entry.progress + availableEps;
+          const m = c.entry.media;
+          const total = (isManga ? m.chapters : m.episodes) ?? "?";
+          const newProgress = c.entry.progress + availableUnits;
 
           plan.push({
             title,
-            episodes: availableEps,
+            episodes: availableUnits,
             minutes: time,
             progress: `${newProgress}/${total}`,
           });
@@ -460,7 +465,8 @@ export function registerRecommendTools(server: FastMCP): void {
         }
 
         if (plan.length === 0) {
-          return `No episodes fit within ${args.minutes} minutes. Try a larger time budget.`;
+          const unitLabel = isManga ? "chapters" : "episodes";
+          return `No ${unitLabel} fit within ${args.minutes} minutes. Try a larger time budget.`;
         }
 
         const totalMinutes = plan.reduce((sum, p) => sum + p.minutes, 0);
@@ -468,7 +474,7 @@ export function registerRecommendTools(server: FastMCP): void {
 
         const lines: string[] = [
           `# Session Plan for ${username}`,
-          `Budget: ${args.minutes} min | Planned: ${totalMinutes} min (${totalEps} episodes)`,
+          `Budget: ${args.minutes} min | Planned: ${totalMinutes} min (${totalEps} ${isManga ? "chapters" : "episodes"})`,
         ];
 
         if (args.mood) {

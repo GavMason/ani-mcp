@@ -165,10 +165,21 @@ export function registerListTools(server: FastMCP): void {
 /** Fetch and format custom lists for a user */
 async function handleCustomLists(
   username: string,
-  args: { type: string; sort: string; limit: number; page: number; customListName?: string },
+  args: {
+    type: string;
+    sort: string;
+    limit: number;
+    page: number;
+    customListName?: string;
+  },
   sort: string[],
 ): Promise<string> {
-  const groups = await anilistClient.fetchListGroups(username, args.type, undefined, sort);
+  const groups = await anilistClient.fetchListGroups(
+    username,
+    args.type,
+    undefined,
+    sort,
+  );
   let customLists = groups.filter((g) => g.isCustomList);
 
   if (!customLists.length) {
@@ -178,9 +189,7 @@ async function handleCustomLists(
   // Filter to a specific named list
   if (args.customListName) {
     const target = args.customListName.toLowerCase();
-    const match = customLists.filter(
-      (g) => g.name.toLowerCase() === target,
-    );
+    const match = customLists.filter((g) => g.name.toLowerCase() === target);
     if (!match.length) {
       const names = customLists.map((g) => g.name).join(", ");
       return `Custom list "${args.customListName}" not found. Available: ${names}`;
@@ -229,8 +238,15 @@ async function handleCustomLists(
     formatListEntry(entry, offset + i + 1, scoreFormat),
   );
 
-  const footer = paginationFooter(args.page, args.limit, totalCount, hasNextPage);
-  return header + "\n\n" + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
+  const footer = paginationFooter(
+    args.page,
+    args.limit,
+    totalCount,
+    hasNextPage,
+  );
+  return (
+    header + "\n\n" + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "")
+  );
 }
 
 /** Format statistics for a single media type (anime or manga) */

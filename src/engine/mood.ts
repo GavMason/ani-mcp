@@ -202,7 +202,7 @@ loadCustomMoods();
 
 /** Parse a freeform mood string into genre/tag boost and penalize sets */
 export function parseMood(mood: string): MoodModifiers {
-  // Strip punctuation and split into lowercase tokens for keyword matching
+  // Lowercase tokens, stripped of punctuation
   const words = mood
     .toLowerCase()
     .replace(/[^a-z\s]/g, "")
@@ -217,7 +217,7 @@ export function parseMood(mood: string): MoodModifiers {
     const rule = MOOD_RULES[word];
     if (!rule) continue;
 
-    // Add to both genre and tag sets since we can't distinguish at parse time
+    // Add to both sets (matcher checks genres and tags separately)
     for (const name of rule.boost) {
       boostGenres.add(name);
       boostTags.add(name);
@@ -245,16 +245,41 @@ export function getMoodKeywords(): string[] {
   return Object.keys(MOOD_RULES);
 }
 
-/** Extract mood keywords as genre/tag arrays for use as search filters */
+// AniList's fixed genre set (stable, rarely changes)
+const ANILIST_GENRES = new Set([
+  "Action",
+  "Adventure",
+  "Comedy",
+  "Drama",
+  "Ecchi",
+  "Fantasy",
+  "Horror",
+  "Mahou Shoujo",
+  "Mecha",
+  "Music",
+  "Mystery",
+  "Psychological",
+  "Romance",
+  "Sci-Fi",
+  "Slice of Life",
+  "Sports",
+  "Supernatural",
+  "Thriller",
+]);
+
+/** Extract mood keywords as separate genre and tag arrays */
 export function parseMoodFilters(mood: string): {
   genres: string[];
   tags: string[];
 } {
   const mods = parseMood(mood);
-  return {
-    genres: [...mods.boostGenres],
-    tags: [...mods.boostTags],
-  };
+  const genres: string[] = [];
+  const tags: string[] = [];
+  for (const name of mods.boostGenres) {
+    if (ANILIST_GENRES.has(name)) genres.push(name);
+    else tags.push(name);
+  }
+  return { genres, tags };
 }
 
 // === Seasonal Suggestions ===

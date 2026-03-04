@@ -86,8 +86,9 @@ export function registerSocialTools(server: FastMCP): void {
           pageInfo.hasNextPage,
         );
 
-        return [header, "", ...lines].join("\n") +
-          (footer ? `\n\n${footer}` : "");
+        return (
+          [header, "", ...lines].join("\n") + (footer ? `\n\n${footer}` : "")
+        );
       } catch (error) {
         return throwToolError(error, "fetching activity feed");
       }
@@ -239,11 +240,12 @@ export function registerSocialTools(server: FastMCP): void {
         const avgScore = Math.round(
           nodes.reduce((sum, r) => sum + r.score, 0) / nodes.length,
         );
-        const sentiment = avgScore >= 75
-          ? "Generally positive"
-          : avgScore >= 50
-            ? "Mixed"
-            : "Generally negative";
+        const sentiment =
+          avgScore >= 75
+            ? "Generally positive"
+            : avgScore >= 50
+              ? "Mixed"
+              : "Generally negative";
         const header = `Reviews for ${title} - ${sentiment} (avg ${avgScore}/100 across ${pageInfo.total} reviews)`;
 
         const formatted = nodes.map((r, i) => {
@@ -251,9 +253,10 @@ export function registerSocialTools(server: FastMCP): void {
             "en-US",
             { month: "short", day: "numeric", year: "numeric" },
           );
-          const helpful = r.ratingAmount > 0
-            ? `${r.rating}/${r.ratingAmount} found helpful`
-            : "No votes";
+          const helpful =
+            r.ratingAmount > 0
+              ? `${r.rating}/${r.ratingAmount} found helpful`
+              : "No votes";
           const body = truncateDescription(r.body, 300);
 
           return [
@@ -271,8 +274,10 @@ export function registerSocialTools(server: FastMCP): void {
           pageInfo.hasNextPage,
         );
 
-        return [header, "", ...formatted].join("\n\n") +
-          (footer ? `\n\n${footer}` : "");
+        return (
+          [header, "", ...formatted].join("\n\n") +
+          (footer ? `\n\n${footer}` : "")
+        );
       } catch (error) {
         return throwToolError(error, "fetching reviews");
       }
@@ -284,15 +289,16 @@ export function registerSocialTools(server: FastMCP): void {
 
 /** Format a single activity entry */
 function formatActivity(activity: Activity, index: number): string {
-  const date = new Date(activity.createdAt * 1000).toLocaleDateString(
-    "en-US",
-    { month: "short", day: "numeric" },
-  );
+  const date = new Date(activity.createdAt * 1000).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 
   if (activity.__typename === "TextActivity") {
-    const text = activity.text.length > 200
-      ? activity.text.slice(0, 200) + "..."
-      : activity.text;
+    const text =
+      activity.text.length > 200
+        ? activity.text.slice(0, 200) + "..."
+        : activity.text;
     return `${index}. ${activity.user.name} posted (${date}):\n   ${text}`;
   }
 

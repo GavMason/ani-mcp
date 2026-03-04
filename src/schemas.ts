@@ -104,7 +104,15 @@ export const ListInputSchema = z.object({
     .default("ANIME")
     .describe("Get anime or manga list"),
   status: z
-    .enum(["CURRENT", "COMPLETED", "PLANNING", "DROPPED", "PAUSED", "ALL", "CUSTOM"])
+    .enum([
+      "CURRENT",
+      "COMPLETED",
+      "PLANNING",
+      "DROPPED",
+      "PAUSED",
+      "ALL",
+      "CUSTOM",
+    ])
     .default("ALL")
     .describe(
       "Filter by list status. CURRENT = watching/reading now. CUSTOM = user-created lists.",
@@ -112,7 +120,9 @@ export const ListInputSchema = z.object({
   customListName: z
     .string()
     .optional()
-    .describe("Filter to a specific custom list by name. Only used when status is CUSTOM."),
+    .describe(
+      "Filter to a specific custom list by name. Only used when status is CUSTOM.",
+    ),
   sort: z
     .enum(["SCORE", "TITLE", "UPDATED", "PROGRESS"])
     .default("UPDATED")
@@ -160,20 +170,20 @@ export const PickInputSchema = z.object({
     .optional()
     .describe(
       "Build taste profile from this media type. Defaults to same as type. " +
-      "Set to get cross-media recs, e.g. anime picks based on manga taste.",
+        "Set to get cross-media recs, e.g. anime picks based on manga taste.",
     ),
   source: z
     .enum(["PLANNING", "SEASONAL", "DISCOVER"])
     .default("PLANNING")
     .describe(
       "Where to find candidates. PLANNING = user's plan-to-watch list (default). " +
-      "SEASONAL = currently airing anime. DISCOVER = top-rated titles matching taste.",
+        "SEASONAL = currently airing anime. DISCOVER = top-rated titles matching taste.",
     ),
   season: z
     .enum(["WINTER", "SPRING", "SUMMER", "FALL"])
     .optional()
     .describe("Season for SEASONAL source. Defaults to the current season."),
-  seasonYear: z
+  year: z
     .number()
     .int()
     .min(1940)
@@ -259,10 +269,7 @@ export const WatchOrderInputSchema = z
       .positive()
       .optional()
       .describe("AniList media ID of any title in the franchise"),
-    title: z
-      .string()
-      .optional()
-      .describe("Search by title if no ID is known"),
+    title: z.string().optional().describe("Search by title if no ID is known"),
     includeSpecials: z
       .boolean()
       .default(false)
@@ -724,16 +731,8 @@ export type ProfileInput = z.infer<typeof ProfileInputSchema>;
 /** Input for fetching community reviews for a title */
 export const ReviewsInputSchema = z
   .object({
-    id: z
-      .number()
-      .int()
-      .positive()
-      .optional()
-      .describe("AniList media ID"),
-    title: z
-      .string()
-      .optional()
-      .describe("Search by title if no ID is known"),
+    id: z.number().int().positive().optional().describe("AniList media ID"),
+    title: z.string().optional().describe("Search by title if no ID is known"),
     sort: z
       .enum(["HELPFUL", "NEWEST"])
       .default("HELPFUL")
