@@ -18,6 +18,7 @@ const MEDIA_FRAGMENT = `
     format
     status
     episodes
+    duration
     chapters
     volumes
     meanScore
@@ -669,6 +670,34 @@ export const STUDIO_SEARCH_QUERY = `
             status
             meanScore
             siteUrl
+          }
+        }
+      }
+    }
+  }
+`;
+
+/** Batch-fetch relations for a list of media IDs */
+export const BATCH_RELATIONS_QUERY = `
+  query BatchRelations($ids: [Int]) {
+    Page(perPage: 50) {
+      media(id_in: $ids) {
+        id
+        title { romaji english }
+        format
+        status
+        relations {
+          edges {
+            relationType
+            node {
+              id
+              title { romaji english }
+              format
+              status
+              type
+              season
+              seasonYear
+            }
           }
         }
       }

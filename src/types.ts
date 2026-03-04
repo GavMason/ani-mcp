@@ -26,6 +26,7 @@ export interface AniListMedia {
   format: string | null;
   status: string | null;
   episodes: number | null;
+  duration: number | null;
   chapters: number | null;
   volumes: number | null;
   meanScore: number | null;
@@ -460,6 +461,32 @@ export interface MediaReviewsResponse {
         user: { name: string; siteUrl: string };
       }>;
     };
+  };
+}
+
+/** Batch relations response for sequel/prequel detection */
+export interface BatchRelationsResponse {
+  Page: {
+    media: Array<{
+      id: number;
+      title: { romaji: string | null; english: string | null };
+      format: string | null;
+      status: string | null;
+      relations: {
+        edges: Array<{
+          relationType: string;
+          node: {
+            id: number;
+            title: { romaji: string | null; english: string | null };
+            format: string | null;
+            status: string | null;
+            type: string;
+            season: string | null;
+            seasonYear: number | null;
+          };
+        }>;
+      };
+    }>;
   };
 }
 

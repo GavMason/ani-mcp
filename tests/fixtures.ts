@@ -21,6 +21,7 @@ export function makeMedia(
     format: overrides.format ?? "TV",
     status: "FINISHED",
     episodes: overrides.episodes ?? 12,
+    duration: 24,
     chapters: null,
     volumes: null,
     meanScore: overrides.meanScore ?? 75,

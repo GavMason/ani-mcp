@@ -3,13 +3,18 @@
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "../api/client.js";
 import {
+  BATCH_RELATIONS_QUERY,
   DISCOVER_MEDIA_QUERY,
   MEDIA_DETAILS_QUERY,
   RECOMMENDATIONS_QUERY,
+  SEASONAL_MEDIA_QUERY,
 } from "../api/queries.js";
 import {
   TasteInputSchema,
   PickInputSchema,
+  SessionInputSchema,
+  SequelAlertInputSchema,
+  WatchOrderInputSchema,
   CompareInputSchema,
   WrappedInputSchema,
   ExplainInputSchema,
@@ -19,6 +24,7 @@ import type {
   SearchMediaResponse,
   MediaDetailsResponse,
   RecommendationsResponse,
+  BatchRelationsResponse,
   AniListMediaListEntry,
   AniListMedia,
 } from "../types.js";
@@ -27,6 +33,7 @@ import {
   getDefaultUsername,
   throwToolError,
   isNsfwEnabled,
+  resolveSeasonYear,
 } from "../utils.js";
 import {
   buildTasteProfile,
@@ -45,6 +52,10 @@ import {
   findCrossRecs,
 } from "../engine/compare.js";
 import { rankSimilar } from "../engine/similar.js";
+import {
+  buildWatchOrder,
+  type RelationNode,
+} from "../engine/franchise.js";
 
 // User scores are normalized to 1-10 via score(format: POINT_10) in the list query.
 // Community meanScore is 0-100. Multiply user score by 10 to compare on the same scale.
@@ -108,7 +119,7 @@ export function registerRecommendTools(server: FastMCP): void {
       "Generate a taste profile summary from a user's completed list. " +
       "Use when the user asks about their anime/manga preferences, " +
       "what genres they like, or how they tend to score. " +
-      "Analyzes genre preferences, theme weights, scoring patterns, and format split.",
+      "Returns genre weights, top themes, scoring patterns with distribution chart, and format split.",
     parameters: TasteInputSchema,
     annotations: {
       title: "Taste Profile",
@@ -173,8 +184,11 @@ export function registerRecommendTools(server: FastMCP): void {
     name: "anilist_pick",
     description:
       '"What should I watch/read next?" Recommends from your Planning list ' +
-      "based on your taste profile. Falls back to top-rated AniList titles " +
-      "if the Planning list is empty. Optionally filter by mood or max episodes.",
+      "based on your taste profile. Also works for backlog analysis - " +
+      '"which of my 200 Planning titles should I actually start?" ' +
+      "Falls back to top-rated AniList titles if the Planning list is empty. " +
+      "Optionally filter by mood or max episodes. " +
+      "Returns ranked picks with match score, genre alignment, and mood fit.",
     parameters: PickInputSchema,
     annotations: {
       title: "Pick Next Watch",
@@ -185,11 +199,52 @@ export function registerRecommendTools(server: FastMCP): void {
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);
+        const profileType = args.profileType ?? args.type;
+        const source = args.source;
 
-        // Two API calls: completed list for taste, planning list for candidates
-        const [completed, planning] = await Promise.all([
-          anilistClient.fetchList(username, args.type, "COMPLETED"),
-          anilistClient.fetchList(username, args.type, "PLANNING"),
+        // Completed list for taste profile
+        const completedPromise = anilistClient.fetchList(username, profileType, "COMPLETED");
+
+        // Candidate source depends on mode
+        let candidatePromise: Promise<AniListMedia[]>;
+        let sourceLabel: string;
+
+        if (source === "SEASONAL") {
+          const { season, year } = resolveSeasonYear(args.season, args.seasonYear);
+          sourceLabel = `${season} ${year} seasonal anime`;
+          candidatePromise = (async () => {
+            const data = await anilistClient.query<SearchMediaResponse>(
+              SEASONAL_MEDIA_QUERY,
+              {
+                season,
+                seasonYear: year,
+                type: "ANIME",
+                sort: ["POPULARITY_DESC"],
+                perPage: 50,
+                page: 1,
+              },
+              { cache: "seasonal" },
+            );
+            return data.Page.media;
+          })();
+        } else if (source === "DISCOVER") {
+          sourceLabel = "top-rated titles matching your taste";
+          candidatePromise = (async () => {
+            const completed = await completedPromise;
+            const profile = buildTasteProfile(completed);
+            const completedIds = new Set(completed.map((e) => e.media.id));
+            return discoverByTaste(profile, args.type, completedIds);
+          })();
+        } else {
+          sourceLabel = "";
+          candidatePromise = anilistClient
+            .fetchList(username, args.type, "PLANNING")
+            .then((entries) => entries.map((e) => e.media));
+        }
+
+        const [completed, candidateMedia] = await Promise.all([
+          completedPromise,
+          candidatePromise,
         ]);
 
         const profile = buildTasteProfile(completed);
@@ -201,15 +256,21 @@ export function registerRecommendTools(server: FastMCP): void {
           );
         }
 
-        // Fall back to top-rated AniList titles when Planning list is empty
-        const fromDiscovery = planning.length === 0;
+        // For PLANNING source, fall back to discover when list is empty
+        const fromDiscovery = source === "PLANNING" && candidateMedia.length === 0;
         let candidates: AniListMedia[];
 
         if (fromDiscovery) {
           const completedIds = new Set(completed.map((e) => e.media.id));
           candidates = await discoverByTaste(profile, args.type, completedIds);
         } else {
-          candidates = planning.map((e) => e.media);
+          // Filter out already-completed titles for SEASONAL/DISCOVER
+          if (source !== "PLANNING") {
+            const completedIds = new Set(completed.map((e) => e.media.id));
+            candidates = candidateMedia.filter((m) => !completedIds.has(m.id));
+          } else {
+            candidates = candidateMedia;
+          }
         }
 
         // Filter adult content unless enabled
@@ -240,9 +301,11 @@ export function registerRecommendTools(server: FastMCP): void {
           return `Could not find good matches on ${username}'s Planning list.`;
         }
 
+        const crossMedia = profileType !== args.type;
         const lines: string[] = [
           `# Top Picks for ${username}`,
-          `Based on ${completed.length} completed titles` +
+          `Based on ${completed.length} completed ${profileType.toLowerCase()} titles` +
+            (crossMedia ? ` (cross-media: ${profileType.toLowerCase()} taste -> ${args.type.toLowerCase()} picks)` : "") +
             (results.length > picks.length
               ? ` (showing ${picks.length} of ${results.length} matches)`
               : ""),
@@ -252,6 +315,8 @@ export function registerRecommendTools(server: FastMCP): void {
           lines.push(
             "No Planning list found - showing top-rated titles matching your taste",
           );
+        } else if (sourceLabel) {
+          lines.push(`Source: ${sourceLabel}`);
         }
 
         // Flag unrecognized mood keywords
@@ -308,15 +373,351 @@ export function registerRecommendTools(server: FastMCP): void {
     },
   });
 
+  // === Watch Session ===
+
+  server.addTool({
+    name: "anilist_session",
+    description:
+      "Plan a watching or reading session within a time budget. " +
+      "Picks from your currently-watching list, scored by taste match and mood. " +
+      "Returns a session plan with titles, episodes to watch, and estimated time.",
+    parameters: SessionInputSchema,
+    annotations: {
+      title: "Plan Session",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        const username = getDefaultUsername(args.username);
+        const DEFAULT_DURATION = 24;
+
+        // CURRENT list for candidates, COMPLETED list for taste profile
+        const [current, completed] = await Promise.all([
+          anilistClient.fetchList(username, args.type, "CURRENT"),
+          anilistClient.fetchList(username, args.type, "COMPLETED"),
+        ]);
+
+        if (current.length === 0) {
+          return `${username} has no ${args.type.toLowerCase()} currently in progress.`;
+        }
+
+        const profile = buildTasteProfile(completed);
+        const mood = args.mood ? parseMood(args.mood) : undefined;
+
+        // Score each current entry
+        const candidates = current.map((entry) => {
+          const m = entry.media;
+          const remaining = m.episodes ? m.episodes - entry.progress : null;
+          const epDuration = m.duration ?? DEFAULT_DURATION;
+          const timeLeft = remaining !== null ? remaining * epDuration : null;
+
+          const results = matchCandidates([m], profile, mood);
+          const matchScore = results.length > 0 ? results[0].score : 50;
+
+          return { entry, remaining, epDuration, timeLeft, matchScore };
+        });
+
+        // Sort by match score descending
+        candidates.sort((a, b) => b.matchScore - a.matchScore);
+
+        // Greedy knapsack: fill the time budget
+        let budget = args.minutes;
+        const plan: Array<{
+          title: string;
+          episodes: number;
+          minutes: number;
+          progress: string;
+        }> = [];
+
+        for (const c of candidates) {
+          if (budget <= 0) break;
+          const epDuration = c.epDuration;
+          if (epDuration > budget) continue;
+
+          // How many episodes fit in remaining budget
+          const maxEps = Math.floor(budget / epDuration);
+          const availableEps = c.remaining !== null
+            ? Math.min(maxEps, c.remaining)
+            : maxEps;
+
+          if (availableEps <= 0) continue;
+
+          const time = availableEps * epDuration;
+          const title = getTitle(c.entry.media.title);
+          const total = c.entry.media.episodes ?? "?";
+          const newProgress = c.entry.progress + availableEps;
+
+          plan.push({
+            title,
+            episodes: availableEps,
+            minutes: time,
+            progress: `${newProgress}/${total}`,
+          });
+
+          budget -= time;
+        }
+
+        if (plan.length === 0) {
+          return `No episodes fit within ${args.minutes} minutes. Try a larger time budget.`;
+        }
+
+        const totalMinutes = plan.reduce((sum, p) => sum + p.minutes, 0);
+        const totalEps = plan.reduce((sum, p) => sum + p.episodes, 0);
+
+        const lines: string[] = [
+          `# Session Plan for ${username}`,
+          `Budget: ${args.minutes} min | Planned: ${totalMinutes} min (${totalEps} episodes)`,
+        ];
+
+        if (args.mood) {
+          lines.push(`Mood: "${args.mood}"`);
+        }
+
+        lines.push("");
+
+        for (let i = 0; i < plan.length; i++) {
+          const p = plan[i];
+          const unit = args.type === "MANGA" ? "ch" : "ep";
+          lines.push(
+            `${i + 1}. ${p.title} - ${p.episodes} ${unit} (~${p.minutes} min) -> ${p.progress}`,
+          );
+        }
+
+        if (budget > 0) {
+          lines.push("", `${budget} min remaining`);
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "planning session");
+      }
+    },
+  });
+
+  // === Sequel Alerts ===
+
+  server.addTool({
+    name: "anilist_sequels",
+    description:
+      "Find sequels airing this season for titles you've completed. " +
+      "Use when the user asks what sequels are coming, or wants to know " +
+      "if any currently airing anime continue shows they've already watched. " +
+      "Returns matches with the completed prequel and the airing sequel.",
+    parameters: SequelAlertInputSchema,
+    annotations: {
+      title: "Sequel Alerts",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        const username = getDefaultUsername(args.username);
+        const { season, year } = resolveSeasonYear(args.season, args.year);
+
+        // Fetch seasonal anime + completed list in parallel
+        const [seasonalData, completed] = await Promise.all([
+          anilistClient.query<SearchMediaResponse>(
+            SEASONAL_MEDIA_QUERY,
+            {
+              season,
+              seasonYear: year,
+              type: "ANIME",
+              sort: ["POPULARITY_DESC"],
+              perPage: 50,
+              page: 1,
+            },
+            { cache: "seasonal" },
+          ),
+          anilistClient.fetchList(username, "ANIME", "COMPLETED"),
+        ]);
+
+        const seasonalMedia = seasonalData.Page.media;
+        if (seasonalMedia.length === 0) {
+          return `No anime found for ${season} ${year}.`;
+        }
+
+        const completedIds = new Set(completed.map((e) => e.media.id));
+        const completedTitles = new Map(
+          completed.map((e) => [e.media.id, getTitle(e.media.title)]),
+        );
+
+        // Batch-fetch relations for all seasonal titles
+        const seasonalIds = seasonalMedia.map((m) => m.id);
+        const relationsData = await anilistClient.query<BatchRelationsResponse>(
+          BATCH_RELATIONS_QUERY,
+          { ids: seasonalIds },
+          { cache: "media" },
+        );
+
+        // Check each seasonal title for prequel/parent in completed set
+        const alerts: Array<{
+          sequel: string;
+          sequelUrl: string;
+          prequel: string;
+          relation: string;
+        }> = [];
+
+        for (const media of relationsData.Page.media) {
+          for (const edge of media.relations.edges) {
+            const rel = edge.relationType;
+            if (rel !== "PREQUEL" && rel !== "PARENT") continue;
+            if (!completedIds.has(edge.node.id)) continue;
+
+            const sequelTitle =
+              media.title.english ?? media.title.romaji ?? "Unknown";
+            const prequelTitle =
+              completedTitles.get(edge.node.id) ??
+              edge.node.title.english ??
+              edge.node.title.romaji ??
+              "Unknown";
+
+            alerts.push({
+              sequel: sequelTitle,
+              sequelUrl: `https://anilist.co/anime/${media.id}`,
+              prequel: prequelTitle,
+              relation: rel === "PREQUEL" ? "sequel" : "spin-off",
+            });
+            break;
+          }
+        }
+
+        if (alerts.length === 0) {
+          return `No sequels to your completed anime found in ${season} ${year}.`;
+        }
+
+        const lines: string[] = [
+          `# Sequel Alerts for ${username}`,
+          `${alerts.length} sequel${alerts.length !== 1 ? "s" : ""} airing in ${season} ${year}:`,
+          "",
+        ];
+
+        for (let i = 0; i < alerts.length; i++) {
+          const a = alerts[i];
+          lines.push(
+            `${i + 1}. ${a.sequel} (${a.relation} to ${a.prequel})`,
+            `   ${a.sequelUrl}`,
+            "",
+          );
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "checking sequel alerts");
+      }
+    },
+  });
+
+  // === Watch Order ===
+
+  server.addTool({
+    name: "anilist_watch_order",
+    description:
+      "Suggested viewing order for a franchise. " +
+      "Use when the user asks what order to watch a series, how to start a long franchise, " +
+      "or wants to know the chronological release order of sequels and prequels. " +
+      "Accepts any title in the franchise and traces the full chain. " +
+      "Returns a numbered list from first to last.",
+    parameters: WatchOrderInputSchema,
+    annotations: {
+      title: "Watch Order",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        // Resolve title to ID
+        let mediaId: number;
+        if (args.id) {
+          mediaId = args.id;
+        } else {
+          const data = await anilistClient.query<MediaDetailsResponse>(
+            MEDIA_DETAILS_QUERY,
+            { search: args.title },
+            { cache: "media" },
+          );
+          mediaId = data.Media.id;
+        }
+
+        // BFS expansion: discover all franchise IDs via batch relation queries
+        const relationsMap = new Map<number, RelationNode>();
+        let frontier = [mediaId];
+        const maxRounds = 5;
+
+        for (let round = 0; round < maxRounds && frontier.length > 0; round++) {
+          const data = await anilistClient.query<BatchRelationsResponse>(
+            BATCH_RELATIONS_QUERY,
+            { ids: frontier },
+            { cache: "media" },
+          );
+
+          const nextFrontier: number[] = [];
+
+          for (const media of data.Page.media) {
+            if (relationsMap.has(media.id)) continue;
+            relationsMap.set(media.id, media);
+
+            // Collect newly discovered IDs
+            for (const edge of media.relations.edges) {
+              if (!relationsMap.has(edge.node.id)) {
+                nextFrontier.push(edge.node.id);
+              }
+            }
+          }
+
+          frontier = nextFrontier;
+        }
+
+        if (relationsMap.size === 0) {
+          return "Could not find franchise relations for this title.";
+        }
+
+        const entries = buildWatchOrder(
+          mediaId,
+          relationsMap,
+          args.includeSpecials,
+        );
+
+        if (entries.length === 0) {
+          return "No entries found in the watch order. This title may be standalone.";
+        }
+
+        // Get the franchise name from the root entry
+        const rootTitle = entries[0].title;
+        const lines: string[] = [
+          `# Watch Order: ${rootTitle} franchise`,
+          `${entries.length} entr${entries.length !== 1 ? "ies" : "y"}${args.includeSpecials ? " (including specials)" : ""}:`,
+          "",
+        ];
+
+        for (let i = 0; i < entries.length; i++) {
+          const e = entries[i];
+          const parts = [e.format ?? "Unknown format"];
+          if (e.status) parts.push(e.status.replace(/_/g, " "));
+          if (e.type === "special") parts.push("special");
+
+          lines.push(`${i + 1}. ${e.title} (${parts.join(" - ")})`);
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "building watch order");
+      }
+    },
+  });
+
   // === User Comparison ===
 
   server.addTool({
     name: "anilist_compare",
     description:
       "Compare taste profiles between two AniList users. " +
-      "Shows compatibility score, shared favorites, biggest disagreements, " +
-      "and genre divergences. Use when someone asks to compare their taste " +
-      "with another user.",
+      "Use when someone asks to compare their taste with another user. " +
+      "Returns compatibility %, shared favorites, biggest disagreements, " +
+      "genre divergences, and cross-recommendations.",
     parameters: CompareInputSchema,
     annotations: {
       title: "Compare Users",
@@ -468,7 +869,8 @@ export function registerRecommendTools(server: FastMCP): void {
     description:
       "Year-in-review summary for a user. " +
       "Use when the user asks about their anime/manga year, what they watched/read " +
-      "in a given year, or wants a recap. Defaults to the current year.",
+      "in a given year, or wants a recap. Defaults to the current year. " +
+      "Returns title count, average score, highest rated, most controversial, genre breakdown, and consumption stats.",
     parameters: WrappedInputSchema,
     annotations: {
       title: "Year in Review",
@@ -610,7 +1012,8 @@ export function registerRecommendTools(server: FastMCP): void {
     description:
       "Score a specific title against a user's taste profile and explain the alignment. " +
       'Use when the user asks "why would I like this?", "is this for me?", or ' +
-      "wants to know how well a specific anime/manga matches their preferences.",
+      "wants to know how well a specific anime/manga matches their preferences. " +
+      "Returns match score, genre/theme affinity breakdown, mood fit, and existing list status.",
     parameters: ExplainInputSchema,
     annotations: {
       title: "Explain Match",
@@ -731,7 +1134,8 @@ export function registerRecommendTools(server: FastMCP): void {
     description:
       "Find titles similar to a specific anime or manga. " +
       "Use when the user asks for shows like a specific title, " +
-      "or wants content-based recommendations without needing a user profile.",
+      "or wants content-based recommendations without needing a user profile. " +
+      "Returns ranked results with similarity %, shared genres, and community rec strength.",
     parameters: SimilarInputSchema,
     annotations: {
       title: "Find Similar",

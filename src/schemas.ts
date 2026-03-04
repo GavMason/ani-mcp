@@ -155,6 +155,31 @@ export const PickInputSchema = z.object({
     .enum(["ANIME", "MANGA"])
     .default("ANIME")
     .describe("Recommend from anime or manga planning list"),
+  profileType: z
+    .enum(["ANIME", "MANGA"])
+    .optional()
+    .describe(
+      "Build taste profile from this media type. Defaults to same as type. " +
+      "Set to get cross-media recs, e.g. anime picks based on manga taste.",
+    ),
+  source: z
+    .enum(["PLANNING", "SEASONAL", "DISCOVER"])
+    .default("PLANNING")
+    .describe(
+      "Where to find candidates. PLANNING = user's plan-to-watch list (default). " +
+      "SEASONAL = currently airing anime. DISCOVER = top-rated titles matching taste.",
+    ),
+  season: z
+    .enum(["WINTER", "SPRING", "SUMMER", "FALL"])
+    .optional()
+    .describe("Season for SEASONAL source. Defaults to the current season."),
+  seasonYear: z
+    .number()
+    .int()
+    .min(1940)
+    .max(new Date().getFullYear() + 2)
+    .optional()
+    .describe("Year for SEASONAL source. Defaults to the current year."),
   mood: z
     .string()
     .optional()
@@ -177,6 +202,77 @@ export const PickInputSchema = z.object({
 });
 
 export type PickInput = z.infer<typeof PickInputSchema>;
+
+/** Input for planning a watch/read session within a time budget */
+export const SessionInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Plan session from anime or manga currently-watching list"),
+  minutes: z
+    .number()
+    .int()
+    .min(10)
+    .max(720)
+    .describe("Time budget in minutes (10-720)"),
+  mood: z
+    .string()
+    .optional()
+    .describe('Optional mood to prioritize titles, e.g. "dark", "chill"'),
+});
+
+export type SessionInput = z.infer<typeof SessionInputSchema>;
+
+/** Input for finding sequels to completed titles airing this season */
+export const SequelAlertInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  season: z
+    .enum(["WINTER", "SPRING", "SUMMER", "FALL"])
+    .optional()
+    .describe("Season to check for sequels. Defaults to the current season."),
+  year: z
+    .number()
+    .int()
+    .min(1940)
+    .max(new Date().getFullYear() + 2)
+    .optional()
+    .describe("Year to check. Defaults to the current year."),
+});
+
+export type SequelAlertInput = z.infer<typeof SequelAlertInputSchema>;
+
+/** Input for franchise watch order guidance */
+export const WatchOrderInputSchema = z
+  .object({
+    id: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("AniList media ID of any title in the franchise"),
+    title: z
+      .string()
+      .optional()
+      .describe("Search by title if no ID is known"),
+    includeSpecials: z
+      .boolean()
+      .default(false)
+      .describe("Include OVAs, specials, and spin-offs in the watch order"),
+  })
+  .refine((data) => data.id !== undefined || data.title !== undefined, {
+    message: "Provide either an id or a title.",
+  });
+
+export type WatchOrderInput = z.infer<typeof WatchOrderInputSchema>;
 
 /** Input for comparing taste profiles between two users */
 export const CompareInputSchema = z.object({

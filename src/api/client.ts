@@ -14,8 +14,8 @@ import type { AniListMediaListEntry, UserListResponse } from "../types.js";
 const ANILIST_API_URL =
   process.env.ANILIST_API_URL || "https://graphql.anilist.co";
 
-// Budget under the 90 req/min limit to leave headroom
-const RATE_LIMIT_PER_MINUTE = 85;
+// No rate limit needed when API is mocked in tests
+const RATE_LIMIT_PER_MINUTE = process.env.VITEST ? 10_000 : 85;
 const MAX_RETRIES = 3;
 
 // Hard timeout per fetch attempt (retries get their own timeout)

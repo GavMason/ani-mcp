@@ -589,6 +589,11 @@ export const defaultHandlers = [
       });
     }
 
+    // Batch relations
+    if (matchQuery(body, "BatchRelations")) {
+      return gql({ Page: { media: [] } });
+    }
+
     // Discover (fallback picks)
     if (matchQuery(body, "DiscoverMedia")) {
       return gql({
@@ -922,6 +927,34 @@ export function reviewsHandler(media: Record<string, unknown>) {
     const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "MediaReviews")) return undefined;
     return gql({ Media: media });
+  });
+}
+
+/** Override batch relations to return specific data */
+export function batchRelationsHandler(
+  media: Array<{
+    id: number;
+    title: { romaji: string | null; english: string | null };
+    relations: {
+      edges: Array<{
+        relationType: string;
+        node: {
+          id: number;
+          title: { romaji: string | null; english: string | null };
+          format: string | null;
+          status: string | null;
+          type: string;
+          season: string | null;
+          seasonYear: number | null;
+        };
+      }>;
+    };
+  }>,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "BatchRelations")) return undefined;
+    return gql({ Page: { media } });
   });
 }
 

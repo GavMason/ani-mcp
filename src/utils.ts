@@ -157,6 +157,30 @@ export async function detectScoreFormat(
   }
 }
 
+/** Resolve season and year, defaulting to current if not provided */
+export function resolveSeasonYear(
+  season?: string,
+  year?: number,
+): { season: string; year: number } {
+  const now = new Date();
+  const currentYear = year ?? now.getFullYear();
+
+  if (season) return { season, year: currentYear };
+
+  // Derive current season from month
+  const month = now.getMonth() + 1;
+  const currentSeason =
+    month <= 3
+      ? "WINTER"
+      : month <= 6
+        ? "SPRING"
+        : month <= 9
+          ? "SUMMER"
+          : "FALL";
+
+  return { season: currentSeason, year: currentYear };
+}
+
 /** Display a normalized 0-10 score in the user's preferred format */
 export function formatScore(score10: number, format: ScoreFormat): string {
   if (score10 <= 0) return "Unscored";

@@ -163,6 +163,18 @@ const MOOD_SYNONYMS: Record<string, string> = {
   // competitive
   rivalry: "competitive",
   tournament: "competitive",
+  // additional natural language terms
+  psychological: "brainy",
+  thoughtful: "brainy",
+  battle: "action",
+  fighting: "action",
+  heartfelt: "sad",
+  touching: "sad",
+  lighthearted: "wholesome",
+  feel: "wholesome",
+  feels: "wholesome",
+  suspense: "intense",
+  suspenseful: "intense",
 };
 
 // Merge base rules and synonyms into a single lookup
@@ -170,6 +182,21 @@ const MOOD_RULES: Record<string, MoodRule> = { ...BASE_MOOD_RULES };
 for (const [synonym, base] of Object.entries(MOOD_SYNONYMS)) {
   MOOD_RULES[synonym] = BASE_MOOD_RULES[base];
 }
+
+// Load user-defined mood overrides from env
+export function loadCustomMoods(): void {
+  const raw = process.env.ANILIST_MOOD_CONFIG;
+  if (!raw) return;
+  try {
+    const custom = JSON.parse(raw) as Record<string, MoodRule>;
+    for (const [key, rule] of Object.entries(custom)) {
+      MOOD_RULES[key.toLowerCase()] = rule;
+    }
+  } catch {
+    console.warn("[ani-mcp] Invalid ANILIST_MOOD_CONFIG JSON, using defaults.");
+  }
+}
+loadCustomMoods();
 
 // === Mood Parser ===
 
@@ -216,6 +243,18 @@ export function hasMoodMatch(mood: string): boolean {
 /** List all recognized mood keywords */
 export function getMoodKeywords(): string[] {
   return Object.keys(MOOD_RULES);
+}
+
+/** Extract mood keywords as genre/tag arrays for use as search filters */
+export function parseMoodFilters(mood: string): {
+  genres: string[];
+  tags: string[];
+} {
+  const mods = parseMood(mood);
+  return {
+    genres: [...mods.boostGenres],
+    tags: [...mods.boostTags],
+  };
 }
 
 // === Seasonal Suggestions ===

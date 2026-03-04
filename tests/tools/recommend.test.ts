@@ -718,6 +718,241 @@ describe("anilist_similar", () => {
   });
 });
 
+describe("anilist_pick cross-media", () => {
+  // Handler that differentiates by media type in the query variables
+  function crossMediaHandler(
+    mangaCompleted: ReturnType<typeof makeEntry>[],
+    animePlanning: ReturnType<typeof makeEntry>[],
+  ) {
+    return http.post(ANILIST_URL, async ({ request }) => {
+      const body = (await request.json()) as {
+        query?: string;
+        variables?: Record<string, unknown>;
+      };
+      if (!body.query?.includes("MediaListCollection")) return undefined;
+
+      const type = body.variables?.type as string | undefined;
+      const status = body.variables?.status as string | undefined;
+
+      if (type === "MANGA" && status === "COMPLETED") {
+        return HttpResponse.json({
+          data: {
+            MediaListCollection: {
+              lists: [{ name: "Completed", status: "COMPLETED", entries: mangaCompleted }],
+            },
+          },
+        });
+      }
+
+      if (type === "ANIME" && status === "PLANNING") {
+        return HttpResponse.json({
+          data: {
+            MediaListCollection: {
+              lists: [{ name: "Planning", status: "PLANNING", entries: animePlanning }],
+            },
+          },
+        });
+      }
+
+      return HttpResponse.json({
+        data: { MediaListCollection: { lists: [] } },
+      });
+    });
+  }
+
+  it("uses profileType for taste and type for candidates", async () => {
+    const mangaCompleted = makeScoredEntries(10).map((e) => ({
+      ...e,
+      media: { ...e.media, type: "MANGA" as const },
+    }));
+    const animePlanning = [
+      makeEntry({ id: 100, score: 0, genres: ["Action", "Adventure"] }),
+    ];
+    animePlanning[0].status = "PLANNING";
+
+    mswServer.use(crossMediaHandler(mangaCompleted, animePlanning));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      profileType: "MANGA",
+      limit: 5,
+    });
+
+    expect(result).toContain("Top Picks for testuser");
+    expect(result).toContain("cross-media");
+    expect(result).toContain("manga taste");
+    expect(result).toContain("anime picks");
+  });
+
+  it("defaults profileType to type when not specified", async () => {
+    const completed = makeScoredEntries(10);
+    const planning = [
+      makeEntry({ id: 100, score: 0, genres: ["Action"] }),
+    ];
+    planning[0].status = "PLANNING";
+    mswServer.use(dualListHandler(completed, planning));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      limit: 5,
+    });
+
+    // No cross-media label
+    expect(result).toContain("Top Picks for testuser");
+    expect(result).not.toContain("cross-media");
+  });
+});
+
+describe("anilist_pick source modes", () => {
+  // Combined handler for seasonal source: completed list + seasonal media query
+  function seasonalPickHandler(
+    completed: ReturnType<typeof makeEntry>[],
+    seasonalMedia: ReturnType<typeof makeMedia>[],
+  ) {
+    return http.post(ANILIST_URL, async ({ request }) => {
+      const body = (await request.json()) as {
+        query?: string;
+        variables?: Record<string, unknown>;
+      };
+
+      if (body.query?.includes("MediaListCollection")) {
+        return HttpResponse.json({
+          data: {
+            MediaListCollection: {
+              lists: completed.length
+                ? [{ name: "Completed", status: "COMPLETED", entries: completed }]
+                : [],
+            },
+          },
+        });
+      }
+
+      if (body.query?.includes("SeasonalMedia")) {
+        return HttpResponse.json({
+          data: {
+            Page: {
+              pageInfo: { total: seasonalMedia.length, hasNextPage: false },
+              media: seasonalMedia,
+            },
+          },
+        });
+      }
+
+      return undefined;
+    });
+  }
+
+  it("recommends from seasonal anime when source is SEASONAL", async () => {
+    const completed = makeScoredEntries(10);
+    const seasonal = [
+      makeMedia({ id: 200, genres: ["Action", "Adventure"], meanScore: 88 }),
+      makeMedia({ id: 201, genres: ["Comedy"], meanScore: 75 }),
+    ];
+
+    mswServer.use(seasonalPickHandler(completed, seasonal));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      source: "SEASONAL",
+      limit: 5,
+    });
+
+    expect(result).toContain("Top Picks for testuser");
+    expect(result).toContain("seasonal anime");
+  });
+
+  it("filters completed titles from seasonal candidates", async () => {
+    const completed = makeScoredEntries(10);
+    // Seasonal media includes one already-completed ID
+    const seasonal = [
+      makeMedia({ id: 1, genres: ["Action"], meanScore: 90 }),
+      makeMedia({ id: 200, genres: ["Action", "Adventure"], meanScore: 85 }),
+    ];
+
+    mswServer.use(seasonalPickHandler(completed, seasonal));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      source: "SEASONAL",
+      limit: 5,
+    });
+
+    expect(result).toContain("Top Picks");
+  });
+
+  it("applies mood filter to seasonal picks", async () => {
+    const completed = makeScoredEntries(10);
+    const seasonal = [
+      makeMedia({ id: 200, genres: ["Horror", "Thriller"], meanScore: 80 }),
+    ];
+
+    mswServer.use(seasonalPickHandler(completed, seasonal));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      source: "SEASONAL",
+      mood: "dark",
+      limit: 5,
+    });
+
+    expect(result).toContain('Mood: "dark"');
+  });
+
+  it("uses DISCOVER source to find top-rated titles", async () => {
+    const completed = makeScoredEntries(10);
+
+    mswServer.use(
+      http.post(ANILIST_URL, async ({ request }) => {
+        const body = (await request.json()) as {
+          query?: string;
+          variables?: Record<string, unknown>;
+        };
+
+        if (body.query?.includes("MediaListCollection")) {
+          return HttpResponse.json({
+            data: {
+              MediaListCollection: {
+                lists: [{ name: "Completed", status: "COMPLETED", entries: completed }],
+              },
+            },
+          });
+        }
+
+        if (body.query?.includes("DiscoverMedia")) {
+          return HttpResponse.json({
+            data: {
+              Page: {
+                pageInfo: { total: 2, hasNextPage: false },
+                media: [
+                  makeMedia({ id: 300, genres: ["Action"], meanScore: 92 }),
+                  makeMedia({ id: 301, genres: ["Action", "Drama"], meanScore: 88 }),
+                ],
+              },
+            },
+          });
+        }
+
+        return undefined;
+      }),
+    );
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      source: "DISCOVER",
+      limit: 5,
+    });
+
+    expect(result).toContain("Top Picks for testuser");
+    expect(result).toContain("top-rated titles matching your taste");
+  });
+});
+
 describe("anilist_pick seasonal hint", () => {
   it("shows seasonal mood tip when no mood is provided", async () => {
     const completed = makeScoredEntries(10);
@@ -762,5 +997,519 @@ describe("anilist_pick seasonal hint", () => {
     });
 
     expect(result).not.toContain("Tip: try a mood like");
+  });
+});
+
+describe("anilist_sequels", () => {
+  // Combined handler: completed list + seasonal media + batch relations
+  function sequelHandler(
+    completed: ReturnType<typeof makeEntry>[],
+    seasonalMedia: ReturnType<typeof makeMedia>[],
+    relations: Array<{
+      id: number;
+      title: { romaji: string | null; english: string | null };
+      relations: {
+        edges: Array<{
+          relationType: string;
+          node: {
+            id: number;
+            title: { romaji: string | null; english: string | null };
+            format: string | null;
+            status: string | null;
+            type: string;
+            season: string | null;
+            seasonYear: number | null;
+          };
+        }>;
+      };
+    }>,
+  ) {
+    return http.post(ANILIST_URL, async ({ request }) => {
+      const body = (await request.json()) as {
+        query?: string;
+        variables?: Record<string, unknown>;
+      };
+
+      if (body.query?.includes("MediaListCollection")) {
+        return HttpResponse.json({
+          data: {
+            MediaListCollection: {
+              lists: completed.length
+                ? [{ name: "Completed", status: "COMPLETED", entries: completed }]
+                : [],
+            },
+          },
+        });
+      }
+
+      if (body.query?.includes("SeasonalMedia")) {
+        return HttpResponse.json({
+          data: {
+            Page: {
+              pageInfo: { total: seasonalMedia.length, hasNextPage: false },
+              media: seasonalMedia,
+            },
+          },
+        });
+      }
+
+      if (body.query?.includes("BatchRelations")) {
+        return HttpResponse.json({
+          data: { Page: { media: relations } },
+        });
+      }
+
+      return undefined;
+    });
+  }
+
+  it("finds sequels to completed titles in current season", async () => {
+    const completed = [
+      makeEntry({ id: 10, score: 9, genres: ["Action"] }),
+    ];
+    const seasonal = [
+      makeMedia({ id: 200, genres: ["Action"], meanScore: 85 }),
+    ];
+    const relations = [
+      {
+        id: 200,
+        title: { romaji: "Sequel Anime", english: "Sequel Anime" },
+        relations: {
+          edges: [
+            {
+              relationType: "PREQUEL",
+              node: {
+                id: 10,
+                title: { romaji: "Original Anime", english: "Original Anime" },
+                format: "TV",
+                status: "FINISHED",
+                type: "ANIME",
+                season: null,
+                seasonYear: null,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    mswServer.use(sequelHandler(completed, seasonal, relations));
+
+    const result = await callTool("anilist_sequels", {
+      username: "testuser",
+    });
+
+    expect(result).toContain("Sequel Alerts for testuser");
+    expect(result).toContain("Sequel Anime");
+    expect(result).toContain("sequel to");
+  });
+
+  it("returns no-sequel message when none match", async () => {
+    const completed = [
+      makeEntry({ id: 10, score: 9, genres: ["Action"] }),
+    ];
+    const seasonal = [
+      makeMedia({ id: 200, genres: ["Action"], meanScore: 85 }),
+    ];
+    // Prequel ID 999 is not in the completed set
+    const relations = [
+      {
+        id: 200,
+        title: { romaji: "New Show", english: "New Show" },
+        relations: {
+          edges: [
+            {
+              relationType: "PREQUEL",
+              node: {
+                id: 999,
+                title: { romaji: "Unwatched", english: "Unwatched" },
+                format: "TV",
+                status: "FINISHED",
+                type: "ANIME",
+                season: null,
+                seasonYear: null,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    mswServer.use(sequelHandler(completed, seasonal, relations));
+
+    const result = await callTool("anilist_sequels", {
+      username: "testuser",
+    });
+
+    expect(result).toContain("No sequels to your completed anime");
+  });
+
+  it("detects PARENT relations as spin-offs", async () => {
+    const completed = [
+      makeEntry({ id: 10, score: 8, genres: ["Comedy"] }),
+    ];
+    const seasonal = [
+      makeMedia({ id: 300, genres: ["Comedy"], meanScore: 70 }),
+    ];
+    const relations = [
+      {
+        id: 300,
+        title: { romaji: "Spin-off Show", english: "Spin-off Show" },
+        relations: {
+          edges: [
+            {
+              relationType: "PARENT",
+              node: {
+                id: 10,
+                title: { romaji: "Parent Show", english: "Parent Show" },
+                format: "TV",
+                status: "FINISHED",
+                type: "ANIME",
+                season: null,
+                seasonYear: null,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    mswServer.use(sequelHandler(completed, seasonal, relations));
+
+    const result = await callTool("anilist_sequels", {
+      username: "testuser",
+    });
+
+    expect(result).toContain("Spin-off Show");
+    expect(result).toContain("spin-off");
+  });
+
+  it("handles empty seasonal list", async () => {
+    mswServer.use(sequelHandler([], [], []));
+
+    const result = await callTool("anilist_sequels", {
+      username: "testuser",
+    });
+
+    expect(result).toContain("No anime found for");
+  });
+
+  it("accepts season and year parameters", async () => {
+    const completed = [
+      makeEntry({ id: 10, score: 9, genres: ["Action"] }),
+    ];
+    const seasonal = [
+      makeMedia({ id: 200, genres: ["Action"], meanScore: 85 }),
+    ];
+    const relations = [
+      {
+        id: 200,
+        title: { romaji: "Summer Sequel", english: "Summer Sequel" },
+        relations: {
+          edges: [
+            {
+              relationType: "PREQUEL",
+              node: {
+                id: 10,
+                title: { romaji: "Original", english: "Original" },
+                format: "TV",
+                status: "FINISHED",
+                type: "ANIME",
+                season: null,
+                seasonYear: null,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    mswServer.use(sequelHandler(completed, seasonal, relations));
+
+    const result = await callTool("anilist_sequels", {
+      username: "testuser",
+      season: "SUMMER",
+      year: 2025,
+    });
+
+    expect(result).toContain("Sequel Alerts");
+    expect(result).toContain("SUMMER 2025");
+  });
+});
+
+describe("anilist_watch_order", () => {
+  // Handler for watch order: MediaDetails + BatchRelations
+  function watchOrderHandler(
+    mediaId: number,
+    mediaTitle: string,
+    relations: Array<{
+      id: number;
+      title: { romaji: string | null; english: string | null };
+      format: string | null;
+      status: string | null;
+      relations: {
+        edges: Array<{
+          relationType: string;
+          node: {
+            id: number;
+            title: { romaji: string | null; english: string | null };
+            format: string | null;
+            status: string | null;
+            type: string;
+            season: string | null;
+            seasonYear: number | null;
+          };
+        }>;
+      };
+    }>,
+  ) {
+    return http.post(ANILIST_URL, async ({ request }) => {
+      const body = (await request.json()) as {
+        query?: string;
+        variables?: Record<string, unknown>;
+      };
+
+      if (body.query?.includes("MediaDetails")) {
+        const m = makeMedia({ id: mediaId, genres: ["Action"], meanScore: 85 });
+        return HttpResponse.json({
+          data: {
+            Media: {
+              ...m,
+              id: mediaId,
+              title: { romaji: mediaTitle, english: mediaTitle, native: null },
+              description: "A test anime.",
+              relations: { edges: [] },
+              recommendations: { nodes: [] },
+            },
+          },
+        });
+      }
+
+      if (body.query?.includes("BatchRelations")) {
+        const ids = (body.variables?.ids as number[]) ?? [];
+        const matching = relations.filter((r) => ids.includes(r.id));
+        return HttpResponse.json({
+          data: { Page: { media: matching } },
+        });
+      }
+
+      return undefined;
+    });
+  }
+
+  it("builds a watch order for a franchise", async () => {
+    const relations = [
+      {
+        id: 1,
+        title: { romaji: "Part 1", english: "Part 1" },
+        format: "TV",
+        status: "FINISHED",
+        relations: {
+          edges: [
+            {
+              relationType: "SEQUEL",
+              node: {
+                id: 2,
+                title: { romaji: "Part 2", english: "Part 2" },
+                format: "TV",
+                status: "FINISHED",
+                type: "ANIME",
+                season: null,
+                seasonYear: null,
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 2,
+        title: { romaji: "Part 2", english: "Part 2" },
+        format: "TV",
+        status: "FINISHED",
+        relations: {
+          edges: [
+            {
+              relationType: "PREQUEL",
+              node: {
+                id: 1,
+                title: { romaji: "Part 1", english: "Part 1" },
+                format: "TV",
+                status: "FINISHED",
+                type: "ANIME",
+                season: null,
+                seasonYear: null,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    mswServer.use(watchOrderHandler(1, "Part 1", relations));
+
+    const result = await callTool("anilist_watch_order", {
+      id: 1,
+    });
+
+    expect(result).toContain("Watch Order:");
+    expect(result).toContain("Part 1");
+    expect(result).toContain("Part 2");
+    expect(result).toContain("1.");
+    expect(result).toContain("2.");
+  });
+
+  it("resolves title to ID when no ID provided", async () => {
+    const relations = [
+      {
+        id: 5,
+        title: { romaji: "My Anime", english: "My Anime" },
+        format: "TV",
+        status: "FINISHED",
+        relations: { edges: [] },
+      },
+    ];
+
+    mswServer.use(watchOrderHandler(5, "My Anime", relations));
+
+    const result = await callTool("anilist_watch_order", {
+      title: "My Anime",
+    });
+
+    expect(result).toContain("Watch Order:");
+    expect(result).toContain("My Anime");
+  });
+});
+
+describe("anilist_session", () => {
+  // Handler returning CURRENT + COMPLETED lists based on status variable
+  function sessionHandler(
+    current: ReturnType<typeof makeEntry>[],
+    completed: ReturnType<typeof makeEntry>[],
+  ) {
+    return http.post(ANILIST_URL, async ({ request }) => {
+      const body = (await request.json()) as {
+        query?: string;
+        variables?: Record<string, unknown>;
+      };
+      if (!body.query?.includes("MediaListCollection")) return undefined;
+
+      const status = body.variables?.status as string | undefined;
+      const entries = status === "CURRENT" ? current : completed;
+      const statusName = status === "CURRENT" ? "Watching" : "Completed";
+
+      return HttpResponse.json({
+        data: {
+          MediaListCollection: {
+            lists: entries.length
+              ? [{ name: statusName, status, entries }]
+              : [],
+          },
+        },
+      });
+    });
+  }
+
+  it("plans a session within time budget", async () => {
+    const current = [
+      {
+        ...makeEntry({ id: 1, score: 0, genres: ["Action"] }),
+        status: "CURRENT",
+        progress: 5,
+        media: { ...makeMedia({ id: 1, genres: ["Action"], episodes: 12 }), duration: 24 },
+      },
+    ];
+    const completed = makeScoredEntries(10);
+    mswServer.use(sessionHandler(current, completed));
+
+    const result = await callTool("anilist_session", {
+      username: "testuser",
+      type: "ANIME",
+      minutes: 60,
+    });
+
+    expect(result).toContain("Session Plan for testuser");
+    expect(result).toContain("Budget: 60 min");
+    expect(result).toContain("ep");
+  });
+
+  it("returns empty message when no current list", async () => {
+    mswServer.use(sessionHandler([], makeScoredEntries(10)));
+
+    const result = await callTool("anilist_session", {
+      username: "testuser",
+      type: "ANIME",
+      minutes: 60,
+    });
+
+    expect(result).toContain("no anime currently in progress");
+  });
+
+  it("applies mood to session ordering", async () => {
+    const current = [
+      {
+        ...makeEntry({ id: 1, score: 0, genres: ["Horror", "Thriller"] }),
+        status: "CURRENT",
+        progress: 3,
+        media: { ...makeMedia({ id: 1, genres: ["Horror", "Thriller"], episodes: 12 }), duration: 24 },
+      },
+    ];
+    const completed = makeScoredEntries(10);
+    mswServer.use(sessionHandler(current, completed));
+
+    const result = await callTool("anilist_session", {
+      username: "testuser",
+      type: "ANIME",
+      minutes: 120,
+      mood: "dark",
+    });
+
+    expect(result).toContain('Mood: "dark"');
+    expect(result).toContain("Session Plan");
+  });
+
+  it("respects remaining episodes", async () => {
+    // Only 2 episodes remaining, 24 min each = 48 min max
+    const current = [
+      {
+        ...makeEntry({ id: 1, score: 0, genres: ["Action"] }),
+        status: "CURRENT",
+        progress: 10,
+        media: { ...makeMedia({ id: 1, genres: ["Action"], episodes: 12 }), duration: 24 },
+      },
+    ];
+    const completed = makeScoredEntries(10);
+    mswServer.use(sessionHandler(current, completed));
+
+    const result = await callTool("anilist_session", {
+      username: "testuser",
+      type: "ANIME",
+      minutes: 120,
+    });
+
+    expect(result).toContain("Session Plan");
+    // Should only plan 2 episodes (48 min) despite 120 min budget
+    expect(result).toContain("2 ep");
+    expect(result).toContain("48 min");
+  });
+
+  it("handles budget too small for any episode", async () => {
+    const current = [
+      {
+        ...makeEntry({ id: 1, score: 0, genres: ["Action"] }),
+        status: "CURRENT",
+        progress: 5,
+        media: { ...makeMedia({ id: 1, genres: ["Action"], episodes: 12 }), duration: 24 },
+      },
+    ];
+    const completed = makeScoredEntries(10);
+    mswServer.use(sessionHandler(current, completed));
+
+    const result = await callTool("anilist_session", {
+      username: "testuser",
+      type: "ANIME",
+      minutes: 10,
+    });
+
+    expect(result).toContain("No episodes fit within 10 minutes");
   });
 });
