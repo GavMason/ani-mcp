@@ -32,7 +32,7 @@ export function registerDiscoverTools(server: FastMCP): void {
     description:
       "Show what's trending on AniList right now. " +
       "Use when the user asks what's hot, trending, or generating buzz. " +
-      "No search term needed - returns titles ranked by current trending score.",
+      "No search term needed. Returns ranked list with title, format, score, genres, and episode count.",
     parameters: TrendingInputSchema,
     annotations: {
       title: "Trending Now",
@@ -93,7 +93,7 @@ export function registerDiscoverTools(server: FastMCP): void {
       "Browse top anime or manga in a specific genre. " +
       "Use when the user asks for the best titles in a genre, " +
       'e.g. "best romance anime" or "top thriller manga from 2023". ' +
-      "No search term needed - discovers by genre with optional year/status/format filters.",
+      "Supports year, status, and format filters. Returns ranked list with title, score, and genres.",
     parameters: GenreBrowseInputSchema,
     annotations: {
       title: "Browse by Genre",
@@ -173,8 +173,8 @@ export function registerDiscoverTools(server: FastMCP): void {
     name: "anilist_genre_list",
     description:
       "List all valid AniList genres and content tags. " +
-      "Use when the user asks what genres exist, wants to see available tags, " +
-      "or needs valid genre names for filtering other tools.",
+      "Use before genre-filtering tools to ensure valid genre names. " +
+      "Returns genres and content tags grouped by category with descriptions.",
     parameters: GenreListInputSchema,
     annotations: {
       title: "List Genres & Tags",

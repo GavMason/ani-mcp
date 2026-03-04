@@ -48,7 +48,8 @@ export function registerWriteTools(server: FastMCP): void {
     description:
       "Update your episode or chapter progress for an anime or manga. " +
       "Use when the user says they watched an episode, finished a chapter, " +
-      "or wants to record how far they are. Requires ANILIST_TOKEN.",
+      "or wants to record progress. Requires ANILIST_TOKEN. " +
+      "Returns updated status, progress count, and entry ID.",
     parameters: UpdateProgressInputSchema,
     annotations: {
       title: "Update Progress",
@@ -95,7 +96,8 @@ export function registerWriteTools(server: FastMCP): void {
     description:
       "Add an anime or manga to your list with a status. " +
       "Use when the user wants to start watching, plan to watch, " +
-      "or mark a title as completed. Requires ANILIST_TOKEN.",
+      "or mark a title as completed. Requires ANILIST_TOKEN. " +
+      "Returns status, optional score, and entry ID.",
     parameters: AddToListInputSchema,
     annotations: {
       title: "Add to List",
@@ -155,8 +157,8 @@ export function registerWriteTools(server: FastMCP): void {
     name: "anilist_rate",
     description:
       "Score an anime or manga on your list. " +
-      "Use when the user wants to give a rating (0-10). " +
-      "Use 0 to remove an existing score. Requires ANILIST_TOKEN.",
+      "Use when the user wants to give a rating (0-10). Scores display in the user's " +
+      "preferred format (3/5/10/100-point). Use 0 to remove. Requires ANILIST_TOKEN.",
     parameters: RateInputSchema,
     annotations: {
       title: "Rate Title",

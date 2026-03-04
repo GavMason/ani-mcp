@@ -127,7 +127,7 @@ export function registerInfoTools(server: FastMCP): void {
     description:
       "Get staff and voice actor credits for an anime or manga. " +
       "Use when the user asks who directed, wrote, or voiced characters in a title. " +
-      "Shows directors, writers, character designers, and Japanese voice actors.",
+      "Returns production staff with roles and characters with Japanese voice actors.",
     parameters: StaffInputSchema,
     annotations: {
       title: "Get Staff Credits",
@@ -197,7 +197,8 @@ export function registerInfoTools(server: FastMCP): void {
     description:
       "Get the airing schedule for an anime. " +
       "Use when the user asks when the next episode airs, " +
-      "or wants to see upcoming episode dates for a currently airing show.",
+      "or wants to see upcoming episode dates for a currently airing show. " +
+      "Returns next episode date/countdown and upcoming episode schedule.",
     parameters: ScheduleInputSchema,
     annotations: {
       title: "Airing Schedule",
@@ -275,7 +276,8 @@ export function registerInfoTools(server: FastMCP): void {
     description:
       "Search for anime/manga characters by name. " +
       "Use when the user asks about a specific character, wants to know " +
-      "which series a character appears in, or who voices them.",
+      "which series a character appears in, or who voices them. " +
+      "Returns character appearances with roles and voice actors.",
     parameters: CharacterSearchInputSchema,
     annotations: {
       title: "Search Characters",
@@ -348,8 +350,8 @@ export function registerInfoTools(server: FastMCP): void {
     name: "anilist_staff_search",
     description:
       "Search for anime/manga staff by name and see their works. " +
-      "Use when the user asks about a director, voice actor, animator, or writer " +
-      "and wants to see everything they have worked on.",
+      "Use when the user asks about a director, voice actor, animator, or writer. " +
+      "Returns staff occupations, works with roles, and scores.",
     parameters: StaffSearchInputSchema,
     annotations: {
       title: "Search Staff",
@@ -449,8 +451,8 @@ export function registerInfoTools(server: FastMCP): void {
     name: "anilist_studio_search",
     description:
       "Search for an animation studio by name and see their productions. " +
-      "Use when the user asks about a studio like MAPPA, Kyoto Animation, or Bones " +
-      "and wants to see what they have produced.",
+      "Use when the user asks about a studio like MAPPA, Kyoto Animation, or Bones. " +
+      "Returns main and supporting productions with format, score, and status.",
     parameters: StudioSearchInputSchema,
     annotations: {
       title: "Search Studios",

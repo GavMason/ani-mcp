@@ -37,7 +37,7 @@ export function registerSocialTools(server: FastMCP): void {
     description:
       "Get recent activity from a user's AniList feed. " +
       "Shows text posts and list updates (anime/manga status changes). " +
-      "Defaults to the configured username if not provided.",
+      "Returns numbered entries with author, date, and content. Supports pagination and type filtering.",
     parameters: FeedInputSchema,
     annotations: {
       title: "Activity Feed",
@@ -100,7 +100,7 @@ export function registerSocialTools(server: FastMCP): void {
     name: "anilist_profile",
     description:
       "View a user's AniList profile including bio, stats, and favourites. " +
-      "Defaults to the configured username if not provided.",
+      "Returns bio, anime/manga stats summary, top favourites by category, and account age.",
     parameters: ProfileInputSchema,
     annotations: {
       title: "User Profile",
@@ -202,8 +202,8 @@ export function registerSocialTools(server: FastMCP): void {
     name: "anilist_reviews",
     description:
       "Get community reviews for an anime or manga. " +
-      "Shows review scores, summaries, and a sentiment overview. " +
-      "Use when the user wants to see what others think about a title.",
+      "Use when the user wants to see what others think about a title. " +
+      "Returns sentiment summary (positive/mixed/negative), individual review scores, summaries, and helpful ratios.",
     parameters: ReviewsInputSchema,
     annotations: {
       title: "Community Reviews",

@@ -27,6 +27,7 @@ import {
   paginationFooter,
   isNsfwEnabled,
   resolveAlias,
+  resolveSeasonYear,
 } from "../utils.js";
 
 // Default to popularity for broad queries
@@ -41,8 +42,8 @@ export function registerSearchTools(server: FastMCP): void {
     description:
       "Search for anime or manga by title with optional filters. " +
       "Use when the user wants to find an anime/manga by name, discover titles " +
-      "in a genre, or find what aired in a specific year. " +
-      "Returns a ranked list with title, format, score, genres, and AniList URL.",
+      "in a genre, or find what aired in a specific year. Supports common abbreviations (aot, jjk, csm). " +
+      "Returns ranked list with title, format, year, score, genres, episode count, studios, and AniList URL.",
     parameters: SearchInputSchema,
     annotations: {
       title: "Search Anime/Manga",
@@ -112,8 +113,9 @@ export function registerSearchTools(server: FastMCP): void {
       "Get full details about a specific anime or manga. " +
       "Use when the user asks about a specific title and wants synopsis, score, " +
       "episodes, studios, related works, and recommendations. " +
-      "Provide either an AniList ID (faster, exact) or a title (fuzzy match). " +
-      "Title search works with English, romaji, native names, and common abbreviations (e.g. 'aot', 'jjk').",
+      "Accepts AniList ID (faster, exact) or title (fuzzy match with abbreviation support). " +
+      "Returns format, status, episodes/chapters, season, score, studios, source, genres, tags, " +
+      "synopsis, related works, and community recommendations.",
     parameters: DetailsInputSchema,
     annotations: {
       title: "Get Title Details",
@@ -228,7 +230,8 @@ export function registerSearchTools(server: FastMCP): void {
     description:
       "Browse anime airing in a given season. " +
       "Use when the user asks what's airing this season, what aired in a past season, " +
-      "or wants to discover seasonal anime. Defaults to the current season/year.",
+      "or wants to discover seasonal anime. Defaults to current season/year. " +
+      "Returns ranked list with title, format, score, genres, and episode count.",
     parameters: SeasonalInputSchema,
     annotations: {
       title: "Browse Seasonal Anime",
@@ -301,7 +304,7 @@ export function registerSearchTools(server: FastMCP): void {
       "Get community recommendations for a specific anime or manga. " +
       "Use when the user asks for shows similar to a specific title, " +
       'or says "I liked X, what else should I watch?" ' +
-      "Returns titles recommended by AniList users, sorted by recommendation count.",
+      "Returns titles ranked by recommendation count with format, score, and genres.",
     parameters: RecommendationsInputSchema,
     annotations: {
       title: "Get Recommendations",
@@ -363,28 +366,3 @@ export function registerSearchTools(server: FastMCP): void {
   });
 }
 
-// === Season Helpers ===
-
-/** Resolve season and year, defaulting to current if not provided */
-function resolveSeasonYear(
-  season?: string,
-  year?: number,
-): { season: string; year: number } {
-  const now = new Date();
-  const currentYear = year ?? now.getFullYear();
-
-  if (season) return { season, year: currentYear };
-
-  // Derive current season from month
-  const month = now.getMonth() + 1;
-  const currentSeason =
-    month <= 3
-      ? "WINTER"
-      : month <= 6
-        ? "SPRING"
-        : month <= 9
-          ? "SUMMER"
-          : "FALL";
-
-  return { season: currentSeason, year: currentYear };
-}

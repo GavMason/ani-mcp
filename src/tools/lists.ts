@@ -35,7 +35,8 @@ export function registerListTools(server: FastMCP): void {
       "Get a user's anime or manga list, filtered by watching status. " +
       "Use when the user asks about their list, what they're watching, " +
       "what they've completed, or what's on their plan-to-watch. " +
-      "Defaults to the configured username if not provided.",
+      "Supports custom lists via status CUSTOM. " +
+      "Returns entries with title, score, progress, status, updated date, and entry ID.",
     parameters: ListInputSchema,
     annotations: {
       title: "Get User List",
@@ -117,7 +118,7 @@ export function registerListTools(server: FastMCP): void {
       "Get a user's watching/reading statistics. " +
       "Use when the user asks about their overall stats, how much anime they've watched, " +
       "their average score, top genres, or score distribution. " +
-      "Shows anime and manga stats side by side.",
+      "Returns title count, mean score, episodes/chapters, top genres, score distribution chart, and format breakdown.",
     parameters: StatsInputSchema,
     annotations: {
       title: "Get User Stats",
