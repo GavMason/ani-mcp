@@ -1,7 +1,7 @@
 {
   "name": "ani-mcp",
   "mcpName": "io.github.gavxm/ani-mcp",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anilist.co) that gets your anime/manga taste - not just API calls.",
   "type": "module",
   "main": "dist/index.js",
