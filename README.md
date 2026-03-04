@@ -5,6 +5,7 @@
 # ani-mcp
 
 [![npm version](https://img.shields.io/npm/v/ani-mcp)](https://www.npmjs.com/package/ani-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/ani-mcp)](https://www.npmjs.com/package/ani-mcp)
 [![CI](https://github.com/gavxm/ani-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/gavxm/ani-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/node/v/ani-mcp)](https://nodejs.org)
