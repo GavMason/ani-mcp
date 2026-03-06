@@ -34,7 +34,9 @@ import {
   throwToolError,
   isNsfwEnabled,
   resolveSeasonYear,
+  resolveAlias,
 } from "../utils.js";
+import { SEARCH_MEDIA_QUERY } from "../api/queries.js";
 import {
   buildTasteProfile,
   describeTasteProfile,
@@ -233,19 +235,27 @@ export function registerRecommendTools(server: FastMCP): void {
           const { season, year } = resolveSeasonYear(args.season, args.year);
           sourceLabel = `${season} ${year} seasonal anime`;
           candidatePromise = (async () => {
-            const data = await anilistClient.query<SearchMediaResponse>(
-              SEASONAL_MEDIA_QUERY,
-              {
-                season,
-                seasonYear: year,
-                type: "ANIME",
-                sort: ["POPULARITY_DESC"],
-                perPage: 50,
-                page: 1,
-              },
-              { cache: "seasonal" },
-            );
-            return data.Page.media;
+            const vars = {
+              season,
+              seasonYear: year,
+              type: "ANIME",
+              sort: ["POPULARITY_DESC"],
+              perPage: 50,
+            };
+            // Fetch pages 1 and 2 in parallel to cover 100 titles
+            const [p1, p2] = await Promise.all([
+              anilistClient.query<SearchMediaResponse>(
+                SEASONAL_MEDIA_QUERY,
+                { ...vars, page: 1 },
+                { cache: "seasonal" },
+              ),
+              anilistClient.query<SearchMediaResponse>(
+                SEASONAL_MEDIA_QUERY,
+                { ...vars, page: 2 },
+                { cache: "seasonal" },
+              ),
+            ]);
+            return [...p1.Page.media, ...p2.Page.media];
           })();
         } else if (source === "DISCOVER") {
           sourceLabel = "top-rated titles matching your taste";
@@ -1056,13 +1066,26 @@ export function registerRecommendTools(server: FastMCP): void {
       try {
         const username = getDefaultUsername(args.username);
 
+        // Resolve title to media ID if needed
+        let mediaId = args.mediaId;
+        if (!mediaId && args.title) {
+          const search = resolveAlias(args.title);
+          const searchData = await anilistClient.query<SearchMediaResponse>(
+            SEARCH_MEDIA_QUERY,
+            { search, type: "ANIME", page: 1, perPage: 1 },
+            { cache: "search" },
+          );
+          if (!searchData.Page.media.length) {
+            return `No results found for "${args.title}".`;
+          }
+          mediaId = searchData.Page.media[0].id;
+        }
+
         // Fetch media details and taste profile in parallel
         const [mediaData, { profile, entries }] = await Promise.all([
           anilistClient.query<MediaDetailsResponse>(
             MEDIA_DETAILS_QUERY,
-            {
-              id: args.mediaId,
-            },
+            { id: mediaId },
             { cache: "media" },
           ),
           profileForUser(username, args.type),
@@ -1176,21 +1199,31 @@ export function registerRecommendTools(server: FastMCP): void {
     },
     execute: async (args) => {
       try {
+        // Resolve title to media ID if needed
+        let mediaId = args.mediaId;
+        if (!mediaId && args.title) {
+          const search = resolveAlias(args.title);
+          const searchData = await anilistClient.query<SearchMediaResponse>(
+            SEARCH_MEDIA_QUERY,
+            { search, type: "ANIME", page: 1, perPage: 1 },
+            { cache: "search" },
+          );
+          if (!searchData.Page.media.length) {
+            return `No results found for "${args.title}".`;
+          }
+          mediaId = searchData.Page.media[0].id;
+        }
+
         // Fetch source details and recommendations in parallel
         const [detailsData, recsData] = await Promise.all([
           anilistClient.query<MediaDetailsResponse>(
             MEDIA_DETAILS_QUERY,
-            {
-              id: args.mediaId,
-            },
+            { id: mediaId },
             { cache: "media" },
           ),
           anilistClient.query<RecommendationsResponse>(
             RECOMMENDATIONS_QUERY,
-            {
-              id: args.mediaId,
-              perPage: 25,
-            },
+            { id: mediaId, perPage: 25 },
             { cache: "media" },
           ),
         ]);

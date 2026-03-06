@@ -21,6 +21,7 @@ import {
   formatMediaSummary,
   throwToolError,
   paginationFooter,
+  BROWSE_SORT_MAP,
 } from "../utils.js";
 
 /** Register discovery tools on the MCP server */
@@ -50,7 +51,7 @@ export function registerDiscoverTools(server: FastMCP): void {
             page: args.page,
             perPage: args.limit,
           },
-          { cache: "search" },
+          { cache: "trending" },
         );
 
         const results = data.Page.media;
@@ -103,16 +104,10 @@ export function registerDiscoverTools(server: FastMCP): void {
     },
     execute: async (args) => {
       try {
-        const sortMap: Record<string, string[]> = {
-          SCORE: ["SCORE_DESC"],
-          POPULARITY: ["POPULARITY_DESC"],
-          TRENDING: ["TRENDING_DESC"],
-        };
-
         const variables: Record<string, unknown> = {
           type: args.type,
           genre_in: [args.genre],
-          sort: sortMap[args.sort] ?? sortMap.SCORE,
+          sort: BROWSE_SORT_MAP[args.sort] ?? BROWSE_SORT_MAP.SCORE,
           isAdult: args.isAdult ? undefined : false,
           page: args.page,
           perPage: args.limit,

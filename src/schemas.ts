@@ -10,12 +10,12 @@ const pageParam = z
   .default(1)
   .describe("Page number for pagination (default 1)");
 
-// AniList usernames: 2-20 chars, alphanumeric + underscores
+// AniList usernames: 2-20 chars, alphanumeric + underscores + hyphens
 const usernameSchema = z
   .string()
   .min(2)
   .max(20)
-  .regex(/^[a-zA-Z0-9_]+$/, "Letters, numbers, and underscores only");
+  .regex(/^[a-zA-Z0-9_-]+$/, "Letters, numbers, underscores, and hyphens only");
 
 /** Input for searching anime or manga by title and filters */
 export const SearchInputSchema = z.object({
@@ -569,56 +569,82 @@ export const RateInputSchema = z.object({
 export type RateInput = z.infer<typeof RateInputSchema>;
 
 /** Input for removing a title from the list */
-export const DeleteFromListInputSchema = z.object({
-  entryId: z
-    .number()
-    .int()
-    .positive()
-    .describe(
-      "List entry ID to delete. This is the id field on a list entry, not the media ID. " +
-        "Use anilist_list to find entry IDs.",
-    ),
-});
+export const DeleteFromListInputSchema = z
+  .object({
+    entryId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("List entry ID to delete (from anilist_list)"),
+    mediaId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("AniList media ID to remove from your list"),
+  })
+  .refine((data) => data.entryId !== undefined || data.mediaId !== undefined, {
+    message: "Provide either an entryId or a mediaId.",
+  });
 
 /** Input for scoring a title against a user's taste profile */
-export const ExplainInputSchema = z.object({
-  mediaId: z
-    .number()
-    .int()
-    .positive()
-    .describe("AniList media ID to evaluate against your taste profile"),
-  username: usernameSchema
-    .optional()
-    .describe(
-      "AniList username. Falls back to configured default if not provided.",
-    ),
-  type: z
-    .enum(["ANIME", "MANGA", "BOTH"])
-    .default("BOTH")
-    .describe("Build taste profile from anime list, manga list, or both"),
-  mood: z
-    .string()
-    .optional()
-    .describe('Optional mood context, e.g. "dark and brainy"'),
-});
+export const ExplainInputSchema = z
+  .object({
+    mediaId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("AniList media ID to evaluate against your taste profile"),
+    title: z
+      .string()
+      .optional()
+      .describe("Search by title if no ID is known"),
+    username: usernameSchema
+      .optional()
+      .describe(
+        "AniList username. Falls back to configured default if not provided.",
+      ),
+    type: z
+      .enum(["ANIME", "MANGA", "BOTH"])
+      .default("BOTH")
+      .describe("Build taste profile from anime list, manga list, or both"),
+    mood: z
+      .string()
+      .optional()
+      .describe('Optional mood context, e.g. "dark and brainy"'),
+  })
+  .refine((data) => data.mediaId !== undefined || data.title !== undefined, {
+    message: "Provide either a mediaId or a title.",
+  });
 
 export type ExplainInput = z.infer<typeof ExplainInputSchema>;
 
 /** Input for finding titles similar to a specific anime or manga */
-export const SimilarInputSchema = z.object({
-  mediaId: z
-    .number()
-    .int()
-    .positive()
-    .describe("AniList media ID to find similar titles for"),
-  limit: z
-    .number()
-    .int()
-    .min(1)
-    .max(25)
-    .default(10)
-    .describe("Number of similar titles to return (default 10, max 25)"),
-});
+export const SimilarInputSchema = z
+  .object({
+    mediaId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("AniList media ID to find similar titles for"),
+    title: z
+      .string()
+      .optional()
+      .describe("Search by title if no ID is known"),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(25)
+      .default(10)
+      .describe("Number of similar titles to return (default 10, max 25)"),
+  })
+  .refine((data) => data.mediaId !== undefined || data.title !== undefined, {
+    message: "Provide either a mediaId or a title.",
+  });
 
 export type SimilarInput = z.infer<typeof SimilarInputSchema>;
 

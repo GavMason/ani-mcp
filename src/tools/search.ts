@@ -28,6 +28,7 @@ import {
   isNsfwEnabled,
   resolveAlias,
   resolveSeasonYear,
+  BROWSE_SORT_MAP,
 } from "../utils.js";
 
 // Default to popularity for broad queries
@@ -243,12 +244,6 @@ export function registerSearchTools(server: FastMCP): void {
       try {
         const { season, year } = resolveSeasonYear(args.season, args.year);
 
-        const sortMap: Record<string, string[]> = {
-          POPULARITY: ["POPULARITY_DESC"],
-          SCORE: ["SCORE_DESC"],
-          TRENDING: ["TRENDING_DESC"],
-        };
-
         const data = await anilistClient.query<SearchMediaResponse>(
           SEASONAL_MEDIA_QUERY,
           {
@@ -256,7 +251,7 @@ export function registerSearchTools(server: FastMCP): void {
             seasonYear: year,
             type: "ANIME",
             isAdult: args.isAdult ? undefined : false,
-            sort: sortMap[args.sort] ?? sortMap.POPULARITY,
+            sort: BROWSE_SORT_MAP[args.sort] ?? BROWSE_SORT_MAP.POPULARITY,
             page: args.page,
             perPage: args.limit,
           },

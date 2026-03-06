@@ -2,7 +2,7 @@
 
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "./api/client.js";
-import { USER_PROFILE_QUERY, USER_STATS_QUERY } from "./api/queries.js";
+import { USER_PROFILE_QUERY } from "./api/queries.js";
 import {
   buildTasteProfile,
   describeTasteProfile,
@@ -10,8 +10,8 @@ import {
 } from "./engine/taste.js";
 import { formatProfile } from "./tools/social.js";
 import { formatListEntry } from "./tools/lists.js";
-import type { UserProfileResponse, UserStatsResponse } from "./types.js";
-import { getDefaultUsername, detectScoreFormat } from "./utils.js";
+import type { UserProfileResponse } from "./types.js";
+import { getDefaultUsername, getScoreFormat } from "./utils.js";
 
 /** Register MCP resources on the server */
 export function registerResources(server: FastMCP): void {
@@ -95,14 +95,7 @@ export function registerResources(server: FastMCP): void {
 
         const [entries, scoreFormat] = await Promise.all([
           anilistClient.fetchList(username, mediaType, "CURRENT"),
-          detectScoreFormat(async () => {
-            const data = await anilistClient.query<UserStatsResponse>(
-              USER_STATS_QUERY,
-              { name: username },
-              { cache: "stats" },
-            );
-            return data.User.mediaListOptions.scoreFormat;
-          }),
+          getScoreFormat(username),
         ]);
 
         if (!entries.length) {

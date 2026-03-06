@@ -63,18 +63,22 @@ export function computeGenreDivergences(
   const allGenres = new Set([...genres1.keys(), ...genres2.keys()]);
   const divergences: Array<{ genre: string; diff: number; desc: string }> = [];
 
+  // Pre-compute rank maps for O(1) lookup
+  const rankOf1 = new Map([...genres1.keys()].map((g, i) => [g, i]));
+  const rankOf2 = new Map([...genres2.keys()].map((g, i) => [g, i]));
+
   // Flag genres in one user's top 5 but not the other's top 10
   for (const genre of allGenres) {
-    const rank1 = [...genres1.keys()].indexOf(genre);
-    const rank2 = [...genres2.keys()].indexOf(genre);
+    const rank1 = rankOf1.get(genre) ?? -1;
+    const rank2 = rankOf2.get(genre) ?? -1;
 
-    if (rank1 >= 0 && rank1 < 5 && (rank2 < 0 || rank2 > 10)) {
+    if (rank1 >= 0 && rank1 < 5 && (rank2 === -1 || rank2 > 10)) {
       divergences.push({
         genre,
         diff: 10,
         desc: `${name1} loves ${genre}, ${name2} doesn't`,
       });
-    } else if (rank2 >= 0 && rank2 < 5 && (rank1 < 0 || rank1 > 10)) {
+    } else if (rank2 >= 0 && rank2 < 5 && (rank1 === -1 || rank1 > 10)) {
       divergences.push({
         genre,
         diff: 10,

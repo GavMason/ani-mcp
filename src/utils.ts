@@ -1,7 +1,15 @@
 /** Formatting and resolution helpers. */
 
 import { UserError } from "fastmcp";
-import type { AniListDate, AniListMedia, ScoreFormat } from "./types.js";
+import type {
+  AniListDate,
+  AniListMedia,
+  ScoreFormat,
+  UserStatsResponse,
+  ViewerResponse,
+} from "./types.js";
+import { anilistClient } from "./api/client.js";
+import { USER_STATS_QUERY, VIEWER_QUERY } from "./api/queries.js";
 
 /** Best available title, respecting ANILIST_TITLE_LANGUAGE preference */
 export function getTitle(title: AniListMedia["title"]): string {
@@ -156,6 +164,33 @@ export async function detectScoreFormat(
     return "POINT_10";
   }
 }
+
+/** Fetch score format for a user (by username) or the authenticated viewer */
+export async function getScoreFormat(username?: string): Promise<ScoreFormat> {
+  return detectScoreFormat(async () => {
+    if (username) {
+      const data = await anilistClient.query<UserStatsResponse>(
+        USER_STATS_QUERY,
+        { name: username },
+        { cache: "stats" },
+      );
+      return data.User.mediaListOptions.scoreFormat;
+    }
+    const data = await anilistClient.query<ViewerResponse>(
+      VIEWER_QUERY,
+      {},
+      { cache: "stats" },
+    );
+    return data.Viewer.mediaListOptions.scoreFormat;
+  });
+}
+
+/** Sort direction map for browse/seasonal tools */
+export const BROWSE_SORT_MAP: Record<string, string[]> = {
+  SCORE: ["SCORE_DESC"],
+  POPULARITY: ["POPULARITY_DESC"],
+  TRENDING: ["TRENDING_DESC"],
+};
 
 /** Resolve season and year, defaulting to current if not provided */
 export function resolveSeasonYear(

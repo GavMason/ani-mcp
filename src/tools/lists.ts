@@ -16,7 +16,7 @@ import {
   throwToolError,
   paginationFooter,
   formatScore,
-  detectScoreFormat,
+  getScoreFormat,
 } from "../utils.js";
 
 // Map user-friendly sort names to AniList's internal enum values
@@ -58,14 +58,7 @@ export function registerListTools(server: FastMCP): void {
         const status = args.status !== "ALL" ? args.status : undefined;
         const [allEntries, scoreFormat] = await Promise.all([
           anilistClient.fetchList(username, args.type, status, sort),
-          detectScoreFormat(async () => {
-            const data = await anilistClient.query<UserStatsResponse>(
-              USER_STATS_QUERY,
-              { name: username },
-              { cache: "stats" },
-            );
-            return data.User.mediaListOptions.scoreFormat;
-          }),
+          getScoreFormat(username),
         ]);
 
         if (!allEntries.length) {
@@ -212,15 +205,7 @@ async function handleCustomLists(
 
   sortEntries(allEntries, args.sort);
 
-  // Detect score format
-  const scoreFormat = await detectScoreFormat(async () => {
-    const data = await anilistClient.query<UserStatsResponse>(
-      USER_STATS_QUERY,
-      { name: username },
-      { cache: "stats" },
-    );
-    return data.User.mediaListOptions.scoreFormat;
-  });
+  const scoreFormat = await getScoreFormat(username);
 
   const totalCount = allEntries.length;
   const offset = (args.page - 1) * args.limit;

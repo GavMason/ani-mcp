@@ -884,6 +884,17 @@ describe("anilist_pick source modes", () => {
     expect(result).toContain("Top Picks");
   });
 
+  it("rejects SEASONAL source with MANGA type", async () => {
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "MANGA",
+      source: "SEASONAL",
+      limit: 5,
+    });
+
+    expect(result).toContain("SEASONAL source only works with anime");
+  });
+
   it("applies mood filter to seasonal picks", async () => {
     const completed = makeScoredEntries(10);
     const seasonal = [
@@ -1559,6 +1570,29 @@ describe("anilist_session", () => {
     // Should only plan 2 episodes (48 min) despite 120 min budget
     expect(result).toContain("2 ep");
     expect(result).toContain("48 min");
+  });
+
+  it("plans manga session with chapters", async () => {
+    const current = [
+      {
+        ...makeEntry({ id: 1, score: 0, genres: ["Action"] }),
+        status: "CURRENT",
+        progress: 10,
+        media: { ...makeMedia({ id: 1, genres: ["Action"] }), type: "MANGA" as const, chapters: 50, episodes: null, duration: 5 },
+      },
+    ];
+    const completed = makeScoredEntries(10);
+    mswServer.use(sessionHandler(current, completed));
+
+    const result = await callTool("anilist_session", {
+      username: "testuser",
+      type: "MANGA",
+      minutes: 60,
+    });
+
+    expect(result).toContain("Session Plan for testuser");
+    expect(result).toContain("ch");
+    expect(result).toContain("chapters");
   });
 
   it("handles budget too small for any episode", async () => {

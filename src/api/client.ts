@@ -44,6 +44,8 @@ export const CACHE_TTLS = {
   list: 5 * 60 * 1000, // 5m
   seasonal: 30 * 60 * 1000, // 30m
   stats: 10 * 60 * 1000, // 10m
+  trending: 30 * 60 * 1000, // 30m
+  schedule: 30 * 60 * 1000, // 30m
 } as const;
 
 export type CacheCategory = keyof typeof CACHE_TTLS;
@@ -61,6 +63,14 @@ const queryCache = new LRUCache<string, Record<string, unknown>>({
   max: 500,
   allowStale: false,
 });
+
+/** Stable JSON serialization with sorted keys */
+function stableStringify(obj: Record<string, unknown>): string {
+  const keys = Object.keys(obj).sort();
+  const sorted: Record<string, unknown> = {};
+  for (const k of keys) sorted[k] = obj[k];
+  return JSON.stringify(sorted);
+}
 
 // === Error Types ===
 
@@ -105,7 +115,7 @@ class AniListClient {
 
     // Cache-through: return cached result or fetch, store, and return
     if (cacheCategory) {
-      const cacheKey = `${query}::${JSON.stringify(variables)}`;
+      const cacheKey = `${query}::${stableStringify(variables)}`;
       const cached = queryCache.get(cacheKey);
       if (cached !== undefined) {
         log("cache-hit", name);
@@ -164,6 +174,18 @@ class AniListClient {
   /** Invalidate the entire query cache */
   clearCache(): void {
     queryCache.clear();
+  }
+
+  /** Evict cache entries related to a specific user (lists and stats) */
+  invalidateUser(username: string): void {
+    const needle = `"${username}"`;
+    for (const key of queryCache.keys()) {
+      // Variable portion is after "::"
+      const varPart = key.slice(key.indexOf("::") + 2);
+      if (varPart.includes(needle)) {
+        queryCache.delete(key);
+      }
+    }
   }
 
   /** Retries with exponential backoff via p-retry */

@@ -215,7 +215,7 @@ export function registerInfoTools(server: FastMCP): void {
         const data = await anilistClient.query<AiringScheduleResponse>(
           AIRING_SCHEDULE_QUERY,
           variables,
-          { cache: "search" },
+          { cache: "schedule" },
         );
 
         const m = data.Media;

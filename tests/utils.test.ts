@@ -11,6 +11,8 @@ import {
   resolveAlias,
   formatScore,
   detectScoreFormat,
+  paginationFooter,
+  resolveSeasonYear,
 } from "../src/utils.js";
 import { makeMedia } from "./fixtures.js";
 
@@ -337,5 +339,53 @@ describe("formatScore", () => {
 
   it("formats POINT_3 low score", () => {
     expect(formatScore(2, "POINT_3")).toBe(":(");
+  });
+});
+
+describe("paginationFooter", () => {
+  it("returns empty string for single page", () => {
+    expect(paginationFooter(1, 10, 5, false)).toBe("");
+  });
+
+  it("shows page info with next hint", () => {
+    const result = paginationFooter(1, 10, 25, true);
+    expect(result).toContain("Page 1 of 3");
+    expect(result).toContain("25 total");
+    expect(result).toContain("Use page: 2 for more.");
+  });
+
+  it("omits next hint on last page", () => {
+    const result = paginationFooter(3, 10, 25, false);
+    expect(result).toContain("Page 3 of 3");
+    expect(result).not.toContain("for more");
+  });
+
+  it("handles exact page boundary", () => {
+    const result = paginationFooter(1, 10, 20, true);
+    expect(result).toContain("Page 1 of 2");
+  });
+});
+
+describe("resolveSeasonYear", () => {
+  it("returns provided season and year", () => {
+    expect(resolveSeasonYear("SUMMER", 2024)).toEqual({ season: "SUMMER", year: 2024 });
+  });
+
+  it("defaults year to current when only season given", () => {
+    const result = resolveSeasonYear("FALL");
+    expect(result.season).toBe("FALL");
+    expect(result.year).toBe(new Date().getFullYear());
+  });
+
+  it("derives season from month when not provided", () => {
+    const result = resolveSeasonYear(undefined, 2025);
+    expect(result.year).toBe(2025);
+    expect(result.season).toMatch(/^(WINTER|SPRING|SUMMER|FALL)$/);
+  });
+
+  it("defaults both to current when no args", () => {
+    const result = resolveSeasonYear();
+    expect(result.year).toBe(new Date().getFullYear());
+    expect(result.season).toMatch(/^(WINTER|SPRING|SUMMER|FALL)$/);
   });
 });

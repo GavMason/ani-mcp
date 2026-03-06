@@ -35,7 +35,7 @@ import type {
 import {
   throwToolError,
   formatScore,
-  detectScoreFormat,
+  getScoreFormat,
   getTitle,
   getDefaultUsername,
 } from "../utils.js";
@@ -137,8 +137,9 @@ export function registerWriteTools(server: FastMCP): void {
           { cache: null },
         );
 
-        anilistClient.clearCache();
-        invalidateUserProfiles(await getViewerName());
+        const viewerName = await getViewerName();
+        anilistClient.invalidateUser(viewerName);
+        invalidateUserProfiles(viewerName);
 
         const entry = data.SaveMediaListEntry;
 
@@ -202,18 +203,12 @@ export function registerWriteTools(server: FastMCP): void {
             variables,
             { cache: null },
           ),
-          detectScoreFormat(async () => {
-            const data = await anilistClient.query<ViewerResponse>(
-              VIEWER_QUERY,
-              {},
-              { cache: "stats" },
-            );
-            return data.Viewer.mediaListOptions.scoreFormat;
-          }),
+          getScoreFormat(),
         ]);
 
-        anilistClient.clearCache();
-        invalidateUserProfiles(await getViewerName());
+        const viewerName = await getViewerName();
+        anilistClient.invalidateUser(viewerName);
+        invalidateUserProfiles(viewerName);
 
         const entry = data.SaveMediaListEntry;
 
@@ -272,18 +267,12 @@ export function registerWriteTools(server: FastMCP): void {
             { mediaId: args.mediaId, scoreRaw: Math.round(args.score * 10) },
             { cache: null },
           ),
-          detectScoreFormat(async () => {
-            const data = await anilistClient.query<ViewerResponse>(
-              VIEWER_QUERY,
-              {},
-              { cache: "stats" },
-            );
-            return data.Viewer.mediaListOptions.scoreFormat;
-          }),
+          getScoreFormat(),
         ]);
 
-        anilistClient.clearCache();
-        invalidateUserProfiles(await getViewerName());
+        const viewerName = await getViewerName();
+        anilistClient.invalidateUser(viewerName);
+        invalidateUserProfiles(viewerName);
 
         const entry = data.SaveMediaListEntry;
 
@@ -316,7 +305,7 @@ export function registerWriteTools(server: FastMCP): void {
     name: "anilist_delete_from_list",
     description:
       "Remove an entry from your anime or manga list. " +
-      "Requires the list entry ID (not the media ID) - use anilist_list to find it. " +
+      "Pass either a list entry ID or a media ID. " +
       "Requires ANILIST_TOKEN.",
     parameters: DeleteFromListInputSchema,
     annotations: {
@@ -330,20 +319,35 @@ export function registerWriteTools(server: FastMCP): void {
       try {
         requireAuth();
 
+        // Resolve mediaId to entryId if needed
+        let entryId = args.entryId;
+        if (!entryId && args.mediaId) {
+          const snapshot = await snapshotByMediaId(args.mediaId);
+          if (!snapshot) {
+            return `Media ${args.mediaId} is not on your list.`;
+          }
+          entryId = snapshot.id;
+        }
+
+        if (!entryId) {
+          return "Provide either an entryId or a mediaId.";
+        }
+
         // Snapshot before deletion
-        const before = await snapshotByEntryId(args.entryId);
+        const before = await snapshotByEntryId(entryId);
 
         const data = await anilistClient.query<DeleteMediaListEntryResponse>(
           DELETE_MEDIA_LIST_ENTRY_MUTATION,
-          { id: args.entryId },
+          { id: entryId },
           { cache: null },
         );
 
-        anilistClient.clearCache();
-        invalidateUserProfiles(await getViewerName());
+        const viewerName = await getViewerName();
+        anilistClient.invalidateUser(viewerName);
+        invalidateUserProfiles(viewerName);
 
         if (!data.DeleteMediaListEntry.deleted) {
-          return `Entry ${args.entryId} was not found or already removed.`;
+          return `Entry ${entryId} was not found or already removed.`;
         }
 
         // Track for undo
@@ -352,14 +356,14 @@ export function registerWriteTools(server: FastMCP): void {
             operation: { type: "delete", before },
             toolName: "anilist_delete_from_list",
             timestamp: Date.now(),
-            description: `Deleted entry ${args.entryId} (media ${before.mediaId})`,
+            description: `Deleted entry ${entryId} (media ${before.mediaId})`,
           });
         }
 
         const hint = before
           ? `\n(Deleted ${before.status} entry - say "undo" to restore)`
           : "";
-        return `Entry ${args.entryId} deleted from your list.${hint}`;
+        return `Entry ${entryId} deleted from your list.${hint}`;
       } catch (error) {
         return throwToolError(error, "deleting from list");
       }
@@ -403,8 +407,9 @@ export function registerWriteTools(server: FastMCP): void {
             },
             { cache: null },
           );
-          anilistClient.clearCache();
-          invalidateUserProfiles(await getViewerName());
+          const viewerName = await getViewerName();
+          anilistClient.invalidateUser(viewerName);
+          invalidateUserProfiles(viewerName);
           return `Undone: restored media ${op.before.mediaId} to ${op.before.status}, progress ${op.before.progress}, score ${op.before.score}.`;
         }
 
@@ -415,8 +420,9 @@ export function registerWriteTools(server: FastMCP): void {
             { id: op.entryId },
             { cache: null },
           );
-          anilistClient.clearCache();
-          invalidateUserProfiles(await getViewerName());
+          const viewerName = await getViewerName();
+          anilistClient.invalidateUser(viewerName);
+          invalidateUserProfiles(viewerName);
           return `Undone: removed media ${op.mediaId} from your list.`;
         }
 
@@ -432,8 +438,9 @@ export function registerWriteTools(server: FastMCP): void {
             },
             { cache: null },
           );
-          anilistClient.clearCache();
-          invalidateUserProfiles(await getViewerName());
+          const viewerName = await getViewerName();
+          anilistClient.invalidateUser(viewerName);
+          invalidateUserProfiles(viewerName);
           return `Undone: restored media ${op.before.mediaId} to ${op.before.status}, progress ${op.before.progress}.`;
         }
 
@@ -457,8 +464,9 @@ export function registerWriteTools(server: FastMCP): void {
               // Continue on individual failures
             }
           }
-          anilistClient.clearCache();
-          invalidateUserProfiles(await getViewerName());
+          const viewerName = await getViewerName();
+          anilistClient.invalidateUser(viewerName);
+          invalidateUserProfiles(viewerName);
           return `Undone: restored ${restored}/${op.entries.length} entries to their previous state.`;
         }
 
@@ -518,7 +526,7 @@ export function registerWriteTools(server: FastMCP): void {
           { cache: null },
         );
 
-        anilistClient.clearCache();
+        anilistClient.invalidateUser(await getViewerName());
 
         // Check if entity is now in favourites (added) or absent (removed)
         const field = FAVOURITE_FIELD_MAP[args.type];
@@ -562,7 +570,7 @@ export function registerWriteTools(server: FastMCP): void {
           { cache: null },
         );
 
-        anilistClient.clearCache();
+        anilistClient.invalidateUser(await getViewerName());
 
         const activity = data.SaveTextActivity;
         const dateStr = new Date(activity.createdAt * 1000).toLocaleDateString(
@@ -774,8 +782,9 @@ export function registerWriteTools(server: FastMCP): void {
           }
         }
 
-        anilistClient.clearCache();
-        invalidateUserProfiles(await getViewerName());
+        const viewerName = await getViewerName();
+        anilistClient.invalidateUser(viewerName);
+        invalidateUserProfiles(viewerName);
 
         // Track batch for undo
         if (snapshots.length > 0) {
