@@ -26,7 +26,7 @@ if (!process.env.ANILIST_TOKEN) {
 
 const server = new FastMCP({
   name: "ani-mcp",
-  version: "0.8.0",
+  version: "0.8.1",
 });
 
 registerSearchTools(server);
