@@ -40,7 +40,8 @@ export function makeMedia(
     studios: { nodes: [{ name: "Studio" }] },
     source: "ORIGINAL",
     isAdult: false,
-    coverImage: { large: null },
+    coverImage: { large: null, extraLarge: null },
+    trailer: null,
     siteUrl: "https://anilist.co/anime/100",
     description: "A test anime.",
   };
@@ -63,6 +64,7 @@ export function makeEntry(
     };
     status: string;
     progress: number;
+    progressVolumes: number;
     startedAt: {
       year: number | null;
       month: number | null;
@@ -80,6 +82,7 @@ export function makeEntry(
     id: overrides.id ?? 1,
     score: overrides.score ?? 8,
     progress: overrides.progress ?? 12,
+    progressVolumes: overrides.progressVolumes ?? 0,
     status: overrides.status ?? "COMPLETED",
     updatedAt: overrides.updatedAt ?? 1700000000,
     startedAt: overrides.startedAt ?? { year: 2023, month: 1, day: 1 },

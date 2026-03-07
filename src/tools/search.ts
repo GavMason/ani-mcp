@@ -28,6 +28,7 @@ import {
   isNsfwEnabled,
   resolveAlias,
   resolveSeasonYear,
+  trailerUrl,
   BROWSE_SORT_MAP,
 } from "../utils.js";
 
@@ -214,6 +215,14 @@ export function registerSearchTools(server: FastMCP): void {
             ); // top 3 genres only
           }
         }
+
+        // Cover image
+        const cover = m.coverImage?.extraLarge ?? m.coverImage?.large;
+        if (cover) lines.push("", `Cover: ${cover}`);
+
+        // Trailer
+        const tUrl = trailerUrl(m.trailer);
+        if (tUrl) lines.push(`Trailer: ${tUrl}`);
 
         lines.push("", `AniList: ${m.siteUrl}`);
 

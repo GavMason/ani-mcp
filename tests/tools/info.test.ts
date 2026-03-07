@@ -3,12 +3,16 @@
 import { describe, it, expect, afterAll, afterEach, beforeAll } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
+import { makeEntry } from "../fixtures.js";
 import {
   staffHandler,
   scheduleHandler,
+  batchAiringHandler,
   characterHandler,
   staffSearchHandler,
   studioSearchHandler,
+  multiStatusListHandler,
+  listHandler,
   errorHandler,
 } from "../helpers/handlers.js";
 
@@ -305,5 +309,44 @@ describe("anilist_whoami", () => {
 
     const result = await callTool("anilist_whoami", {});
     expect(result.toLowerCase()).toContain("authentication");
+  });
+});
+
+describe("anilist_airing", () => {
+  it("returns airing titles with countdown", async () => {
+    // CURRENT list with one entry
+    mswServer.use(
+      multiStatusListHandler({
+        CURRENT: [makeEntry({ id: 1, status: "CURRENT", progress: 4 })],
+      }),
+    );
+
+    const result = await callTool("anilist_airing", {});
+
+    expect(result).toContain("Airing tracker");
+    expect(result).toContain("1 currently watching");
+    expect(result).toContain("Ep 5");
+    expect(result).toContain("Your progress: 4");
+  });
+
+  it("shows message when not watching anything", async () => {
+    mswServer.use(listHandler([], "CURRENT"));
+
+    const result = await callTool("anilist_airing", {});
+
+    expect(result).toContain("not currently watching");
+  });
+
+  it("handles titles with no upcoming episodes", async () => {
+    mswServer.use(
+      multiStatusListHandler({
+        CURRENT: [makeEntry({ id: 1, status: "CURRENT" })],
+      }),
+      batchAiringHandler([]),
+    );
+
+    const result = await callTool("anilist_airing", {});
+
+    expect(result).toContain("0 with upcoming episodes");
   });
 });

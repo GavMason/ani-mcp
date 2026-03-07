@@ -43,7 +43,8 @@ export interface AniListMedia {
   };
   source: string | null;
   isAdult: boolean;
-  coverImage: { large: string | null };
+  coverImage: { large: string | null; extraLarge: string | null };
+  trailer: { id: string; site: string; thumbnail: string } | null;
   siteUrl: string;
   description: string | null;
 }
@@ -227,6 +228,28 @@ export interface AiringScheduleResponse {
   };
 }
 
+/** Batch airing response for currently watching tracker */
+export interface BatchAiringResponse {
+  Page: {
+    media: Array<{
+      id: number;
+      title: {
+        romaji: string | null;
+        english: string | null;
+        native: string | null;
+      };
+      format: string | null;
+      episodes: number | null;
+      nextAiringEpisode: {
+        episode: number;
+        airingAt: number;
+        timeUntilAiring: number;
+      } | null;
+      siteUrl: string;
+    }>;
+  };
+}
+
 /** Character search results */
 export interface CharacterSearchResponse {
   Page: {
@@ -266,6 +289,7 @@ export interface MediaListEntryResponse {
     status: string;
     score: number;
     progress: number;
+    progressVolumes: number;
     notes: string | null;
     private: boolean;
   } | null;
@@ -279,6 +303,7 @@ export interface SaveMediaListEntryResponse {
     status: string;
     score: number;
     progress: number;
+    progressVolumes: number;
   };
 }
 
@@ -294,6 +319,7 @@ export interface AniListMediaListEntry {
   id: number;
   score: number;
   progress: number;
+  progressVolumes: number;
   status: string;
   updatedAt: number;
   startedAt: AniListDate;

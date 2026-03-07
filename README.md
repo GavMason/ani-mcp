@@ -95,6 +95,7 @@ Works with any MCP-compatible client.
 | `anilist_sequels` | Sequels airing this season for titles you've completed |
 | `anilist_watch_order` | Viewing order for a franchise |
 | `anilist_session` | Plan a viewing session within a time budget |
+| `anilist_mal_import` | Import a MyAnimeList user's list and generate recommendations |
 
 ### Info
 
@@ -104,6 +105,7 @@ Works with any MCP-compatible client.
 | `anilist_staff_search` | Search for a person by name and see all their works |
 | `anilist_studio_search` | Search for a studio and see their productions |
 | `anilist_schedule` | Airing schedule and next episode countdown |
+| `anilist_airing` | Upcoming episodes for titles you're currently watching |
 | `anilist_characters` | Search characters by name with appearances and VAs |
 | `anilist_whoami` | Check authentication status and score format |
 

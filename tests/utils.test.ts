@@ -7,6 +7,7 @@ import {
   getDefaultUsername,
   throwToolError,
   formatMediaSummary,
+  trailerUrl,
   isNsfwEnabled,
   resolveAlias,
   formatScore,
@@ -194,6 +195,64 @@ describe("formatMediaSummary", () => {
       startDate: { year: null, month: null, day: null },
     };
     expect(formatMediaSummary(media)).toContain("?");
+  });
+
+  it("includes cover image when extraLarge is set", () => {
+    const media = {
+      ...makeMedia(),
+      coverImage: { large: "https://large.jpg", extraLarge: "https://xl.jpg" },
+    };
+    expect(formatMediaSummary(media)).toContain("Cover: https://xl.jpg");
+  });
+
+  it("falls back to large cover when extraLarge is null", () => {
+    const media = {
+      ...makeMedia(),
+      coverImage: { large: "https://large.jpg", extraLarge: null },
+    };
+    expect(formatMediaSummary(media)).toContain("Cover: https://large.jpg");
+  });
+
+  it("omits cover line when no images", () => {
+    expect(formatMediaSummary(makeMedia())).not.toContain("Cover:");
+  });
+
+  it("includes trailer URL for youtube", () => {
+    const media = {
+      ...makeMedia(),
+      trailer: { id: "abc123", site: "youtube", thumbnail: "" },
+    };
+    expect(formatMediaSummary(media)).toContain(
+      "Trailer: https://youtube.com/watch?v=abc123",
+    );
+  });
+
+  it("omits trailer line when trailer is null", () => {
+    expect(formatMediaSummary(makeMedia())).not.toContain("Trailer:");
+  });
+});
+
+describe("trailerUrl", () => {
+  it("returns youtube URL", () => {
+    expect(
+      trailerUrl({ id: "xyz", site: "youtube", thumbnail: "" }),
+    ).toBe("https://youtube.com/watch?v=xyz");
+  });
+
+  it("returns dailymotion URL", () => {
+    expect(
+      trailerUrl({ id: "abc", site: "dailymotion", thumbnail: "" }),
+    ).toBe("https://dailymotion.com/video/abc");
+  });
+
+  it("returns null for unknown site", () => {
+    expect(
+      trailerUrl({ id: "x", site: "vimeo", thumbnail: "" }),
+    ).toBeNull();
+  });
+
+  it("returns null when trailer is null", () => {
+    expect(trailerUrl(null)).toBeNull();
   });
 });
 

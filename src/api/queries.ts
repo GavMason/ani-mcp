@@ -39,7 +39,8 @@ const MEDIA_FRAGMENT = `
     }
     source
     isAdult
-    coverImage { large }
+    coverImage { large extraLarge }
+    trailer { id site thumbnail }
     siteUrl
     description(asHtml: false)
   }
@@ -348,6 +349,26 @@ export const AIRING_SCHEDULE_QUERY = `
   }
 `;
 
+/** Batch-fetch next airing episodes for multiple media IDs */
+export const BATCH_AIRING_QUERY = `
+  query BatchAiring($ids: [Int], $perPage: Int) {
+    Page(perPage: $perPage) {
+      media(id_in: $ids, status: RELEASING) {
+        id
+        title { romaji english native }
+        format
+        episodes
+        nextAiringEpisode {
+          episode
+          airingAt
+          timeUntilAiring
+        }
+        siteUrl
+      }
+    }
+  }
+`;
+
 /** Search for characters by name */
 export const CHARACTER_SEARCH_QUERY = `
   query CharacterSearch($search: String!, $page: Int, $perPage: Int) {
@@ -388,6 +409,7 @@ export const SAVE_MEDIA_LIST_ENTRY_MUTATION = `
     $status: MediaListStatus
     $scoreRaw: Int
     $progress: Int
+    $progressVolumes: Int
     $notes: String
     $private: Boolean
   ) {
@@ -396,6 +418,7 @@ export const SAVE_MEDIA_LIST_ENTRY_MUTATION = `
       status: $status
       scoreRaw: $scoreRaw
       progress: $progress
+      progressVolumes: $progressVolumes
       notes: $notes
       private: $private
     ) {
@@ -404,6 +427,7 @@ export const SAVE_MEDIA_LIST_ENTRY_MUTATION = `
       status
       score(format: POINT_10)
       progress
+      progressVolumes
     }
   }
 `;
@@ -417,6 +441,7 @@ export const MEDIA_LIST_ENTRY_QUERY = `
       status
       score(format: POINT_10)
       progress
+      progressVolumes
       notes
       private
     }
@@ -454,6 +479,7 @@ export const USER_LIST_QUERY = `
           id
           score(format: POINT_10)  # normalize to 1-10 scale regardless of user's profile setting
           progress
+          progressVolumes
           status
           updatedAt
           startedAt { year month day }

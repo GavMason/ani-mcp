@@ -8,6 +8,7 @@ export interface EntrySnapshot {
   status: string;
   score: number;
   progress: number;
+  progressVolumes: number;
   notes: string | null;
   private: boolean;
 }

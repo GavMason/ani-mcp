@@ -11,6 +11,7 @@ import { registerInfoTools } from "../../src/tools/info.js";
 import { registerWriteTools } from "../../src/tools/write.js";
 import { registerSocialTools } from "../../src/tools/social.js";
 import { registerAnalyticsTools } from "../../src/tools/analytics.js";
+import { registerImportTools } from "../../src/tools/import.js";
 import { registerResources } from "../../src/resources.js";
 import { registerPrompts } from "../../src/prompts.js";
 
@@ -44,6 +45,7 @@ function collectAll() {
   registerWriteTools(proxy as never);
   registerSocialTools(proxy as never);
   registerAnalyticsTools(proxy as never);
+  registerImportTools(proxy as never);
   registerResources(proxy as never);
   registerPrompts(proxy as never);
 

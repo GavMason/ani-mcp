@@ -130,6 +130,9 @@ export function registerWriteTools(server: FastMCP): void {
           progress: args.progress,
           status: args.status ?? "CURRENT",
         };
+        if (args.volumeProgress !== undefined) {
+          variables.progressVolumes = args.volumeProgress;
+        }
 
         const data = await anilistClient.query<SaveMediaListEntryResponse>(
           SAVE_MEDIA_LIST_ENTRY_MUTATION,
@@ -153,10 +156,14 @@ export function registerWriteTools(server: FastMCP): void {
           description: `Set progress to ${args.progress} on media ${args.mediaId}`,
         });
 
+        const volStr =
+          entry.progressVolumes > 0
+            ? ` | Volumes: ${entry.progressVolumes}`
+            : "";
         return [
           `Progress updated.`,
           `Status: ${entry.status}`,
-          `Progress: ${entry.progress}`,
+          `Progress: ${entry.progress}${volStr}`,
           `Entry ID: ${entry.id}`,
           undoHint(before),
         ].join("\n");
@@ -404,6 +411,7 @@ export function registerWriteTools(server: FastMCP): void {
               status: op.before.status,
               scoreRaw: op.before.score * 10,
               progress: op.before.progress,
+              progressVolumes: op.before.progressVolumes,
             },
             { cache: null },
           );
@@ -435,6 +443,7 @@ export function registerWriteTools(server: FastMCP): void {
               status: op.before.status,
               scoreRaw: op.before.score * 10,
               progress: op.before.progress,
+              progressVolumes: op.before.progressVolumes,
             },
             { cache: null },
           );
@@ -456,6 +465,7 @@ export function registerWriteTools(server: FastMCP): void {
                   status: item.before.status,
                   scoreRaw: item.before.score * 10,
                   progress: item.before.progress,
+                  progressVolumes: item.before.progressVolumes,
                 },
                 { cache: null },
               );
@@ -764,6 +774,7 @@ export function registerWriteTools(server: FastMCP): void {
               status: e.status,
               score: e.score,
               progress: e.progress,
+              progressVolumes: e.progressVolumes,
               notes: e.notes,
               private: false,
             };

@@ -6,6 +6,7 @@ import { anilistClient } from "../api/client.js";
 import {
   STAFF_QUERY,
   AIRING_SCHEDULE_QUERY,
+  BATCH_AIRING_QUERY,
   CHARACTER_SEARCH_QUERY,
   STAFF_SEARCH_QUERY,
   STUDIO_SEARCH_QUERY,
@@ -14,6 +15,7 @@ import {
 import {
   StaffInputSchema,
   ScheduleInputSchema,
+  AiringTrackerInputSchema,
   CharacterSearchInputSchema,
   StaffSearchInputSchema,
   StudioSearchInputSchema,
@@ -21,12 +23,18 @@ import {
 import type {
   StaffResponse,
   AiringScheduleResponse,
+  BatchAiringResponse,
   CharacterSearchResponse,
   StaffSearchResponse,
   StudioSearchResponse,
   ViewerResponse,
 } from "../types.js";
-import { getTitle, throwToolError, paginationFooter } from "../utils.js";
+import {
+  getTitle,
+  getDefaultUsername,
+  throwToolError,
+  paginationFooter,
+} from "../utils.js";
 
 // === Helpers ===
 
@@ -265,6 +273,106 @@ export function registerInfoTools(server: FastMCP): void {
         return lines.join("\n");
       } catch (error) {
         return throwToolError(error, "fetching schedule");
+      }
+    },
+  });
+
+  // === Airing Tracker ===
+
+  server.addTool({
+    name: "anilist_airing",
+    description:
+      "Show upcoming episodes for all anime you're currently watching. " +
+      "Use when the user asks what's airing soon, what episodes are coming up, " +
+      "or wants a watchlist calendar. " +
+      "Returns titles sorted by next airing time with episode number and countdown.",
+    parameters: AiringTrackerInputSchema,
+    annotations: {
+      title: "Airing Tracker",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        const username = getDefaultUsername(args.username);
+
+        // Fetch currently watching anime
+        const entries = await anilistClient.fetchList(
+          username,
+          "ANIME",
+          "CURRENT",
+        );
+
+        if (!entries.length) {
+          return `${username} is not currently watching any anime.`;
+        }
+
+        // Extract media IDs for batch airing lookup
+        const mediaIds = entries.map((e) => e.media.id);
+
+        // Batch-fetch airing info (50 per page max)
+        const airingMedia: BatchAiringResponse["Page"]["media"] = [];
+        for (let i = 0; i < mediaIds.length; i += 50) {
+          const batch = mediaIds.slice(i, i + 50);
+          const data = await anilistClient.query<BatchAiringResponse>(
+            BATCH_AIRING_QUERY,
+            { ids: batch, perPage: 50 },
+            { cache: "schedule" },
+          );
+          airingMedia.push(...data.Page.media);
+        }
+
+        // Map media ID to user progress
+        const progressMap = new Map(
+          entries.map((e) => [e.media.id, e.progress]),
+        );
+
+        // Sort by nearest airing time
+        const airing = airingMedia
+          .filter((m) => m.nextAiringEpisode)
+          .sort(
+            (a, b) =>
+              (a.nextAiringEpisode?.timeUntilAiring ?? Infinity) -
+              (b.nextAiringEpisode?.timeUntilAiring ?? Infinity),
+          )
+          .slice(0, args.limit);
+
+        const notAiringCount = entries.length - airingMedia.length;
+
+        const lines: string[] = [
+          `# Airing tracker for ${username}`,
+          `${entries.length} currently watching, ${airing.length} with upcoming episodes`,
+          "",
+        ];
+
+        for (const m of airing) {
+          const next = m.nextAiringEpisode;
+          if (!next) continue;
+          const title = getTitle(m.title);
+          const date = new Date(next.airingAt * 1000);
+          const dateStr = date.toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          });
+          const totalEp = m.episodes ? `/${m.episodes}` : "";
+          const userProgress = progressMap.get(m.id) ?? 0;
+          lines.push(
+            `${title} (${m.format ?? "?"})`,
+            `  Ep ${next.episode}${totalEp} - ${dateStr} (${formatTimeUntil(next.timeUntilAiring)})`,
+            `  Your progress: ${userProgress}${totalEp} ep`,
+            "",
+          );
+        }
+
+        if (notAiringCount > 0) {
+          lines.push(`${notAiringCount} title(s) not currently airing.`);
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "tracking airing schedule");
       }
     },
   });

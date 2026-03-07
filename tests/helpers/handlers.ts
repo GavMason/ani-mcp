@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { makeMedia, makeEntry } from "../fixtures.js";
 
 const ANILIST_URL = "https://graphql.anilist.co";
+const JIKAN_BASE = "https://api.jikan.moe/v4";
 
 // === Response Factories ===
 
@@ -314,6 +315,28 @@ export const defaultHandlers = [
       });
     }
 
+    // Batch airing
+    if (matchQuery(body, "BatchAiring")) {
+      return gql({
+        Page: {
+          media: [
+            {
+              id: 1,
+              title: { romaji: "Test Anime", english: "Test Anime", native: null },
+              format: "TV",
+              episodes: 24,
+              nextAiringEpisode: {
+                episode: 5,
+                airingAt: Math.floor(Date.now() / 1000) + 86400,
+                timeUntilAiring: 86400,
+              },
+              siteUrl: "https://anilist.co/anime/1",
+            },
+          ],
+        },
+      });
+    }
+
     // Character search
     if (matchQuery(body, "CharacterSearch")) {
       return gql({
@@ -578,6 +601,7 @@ export const defaultHandlers = [
           status: (body.variables?.status as string) ?? "CURRENT",
           score: (body.variables?.score as number) ?? 0,
           progress: (body.variables?.progress as number) ?? 0,
+          progressVolumes: (body.variables?.progressVolumes as number) ?? 0,
         },
       });
     }
@@ -598,6 +622,7 @@ export const defaultHandlers = [
           status: "CURRENT",
           score: 5,
           progress: 3,
+          progressVolumes: 0,
           notes: null,
           private: false,
         },
@@ -639,6 +664,31 @@ export const defaultHandlers = [
       { errors: [{ message: "Unhandled query in test handler" }] },
       { status: 400 },
     );
+  }),
+
+  // Jikan (MAL) default handler - 6 entries (taste engine needs MIN_ENTRIES=5)
+  http.get(`${JIKAN_BASE}/users/:username/animelist`, () => {
+    const genres = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi"];
+    const data = Array.from({ length: 6 }, (_, i) => ({
+      score: 6 + (i % 4),
+      episodes_watched: 12 + i,
+      anime: {
+        mal_id: 101 + i,
+        title: `MAL Anime ${i + 1}`,
+        type: "TV",
+        episodes: 12 + i,
+        score: 7.0 + i * 0.3,
+        genres: [
+          { mal_id: i + 1, name: genres[i % genres.length] },
+          { mal_id: i + 2, name: genres[(i + 1) % genres.length] },
+        ],
+        year: 2020 + (i % 3),
+      },
+    }));
+    return HttpResponse.json({
+      data,
+      pagination: { last_visible_page: 1, has_next_page: false },
+    });
   }),
 ];
 
@@ -1034,11 +1084,42 @@ export function mediaListEntryHandler(
   });
 }
 
+/** Override batch airing to return specific data */
+export function batchAiringHandler(
+  media: Array<Record<string, unknown>>,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "BatchAiring")) return undefined;
+    return gql({ Page: { media } });
+  });
+}
+
 /** Override post activity to return specific data */
 export function activityHandler(activity: Record<string, unknown>) {
   return http.post(ANILIST_URL, async ({ request }) => {
     const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "SaveTextActivity")) return undefined;
     return gql({ SaveTextActivity: activity });
+  });
+}
+
+/** Override Jikan animelist to return specific entries */
+export function jikanListHandler(
+  entries: Array<Record<string, unknown>>,
+  hasNextPage = false,
+) {
+  return http.get(`${JIKAN_BASE}/users/:username/animelist`, () => {
+    return HttpResponse.json({
+      data: entries,
+      pagination: { last_visible_page: 1, has_next_page: hasNextPage },
+    });
+  });
+}
+
+/** Override Jikan to return 404 for unknown user */
+export function jikanNotFoundHandler() {
+  return http.get(`${JIKAN_BASE}/users/:username/animelist`, () => {
+    return new HttpResponse(null, { status: 404 });
   });
 }

@@ -299,10 +299,14 @@ export function formatListEntry(
   const title = getTitle(media.title);
   const format = media.format ?? "?";
 
-  // Progress string (e.g. "5/12 ep" or "30/? ch")
+  // Progress string (e.g. "5/12 ep" or "30/? ch, 5/20 vol")
   const total = media.episodes ?? media.chapters ?? "?";
   const unit = media.episodes !== null ? "ep" : "ch";
-  const progress = `${entry.progress}/${total} ${unit}`;
+  let progress = `${entry.progress}/${total} ${unit}`;
+  if (entry.progressVolumes > 0) {
+    const totalVol = media.volumes ?? "?";
+    progress += `, ${entry.progressVolumes}/${totalVol} vol`;
+  }
 
   const score = formatScore(entry.score, scoreFmt);
 

@@ -153,9 +153,28 @@ export function formatMediaSummary(media: AniListMedia): string {
 
   if (length) lines.push(`  Length: ${length}`);
   if (studios) lines.push(`  Studio: ${studios}`);
+
+  // Best available cover image
+  const cover = media.coverImage?.extraLarge ?? media.coverImage?.large;
+  if (cover) lines.push(`  Cover: ${cover}`);
+
+  // Trailer link
+  const trailer = trailerUrl(media.trailer);
+  if (trailer) lines.push(`  Trailer: ${trailer}`);
+
   lines.push(`  URL: ${media.siteUrl}`);
 
   return lines.join("\n");
+}
+
+/** Construct full trailer URL from site + video ID */
+export function trailerUrl(trailer: AniListMedia["trailer"]): string | null {
+  if (!trailer) return null;
+  if (trailer.site === "youtube")
+    return `https://youtube.com/watch?v=${trailer.id}`;
+  if (trailer.site === "dailymotion")
+    return `https://dailymotion.com/video/${trailer.id}`;
+  return null;
 }
 
 /** Detect score format from env override or API fallback */

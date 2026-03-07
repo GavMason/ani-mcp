@@ -472,6 +472,42 @@ export const ScheduleInputSchema = z
 
 export type ScheduleInput = z.infer<typeof ScheduleInputSchema>;
 
+/** Input for airing tracker across currently watching titles */
+export const AiringTrackerInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(20)
+    .describe("Max titles to show (default 20, max 50)"),
+});
+
+export type AiringTrackerInput = z.infer<typeof AiringTrackerInputSchema>;
+
+/** Input for importing a MyAnimeList user's list for recommendations */
+export const MalImportInputSchema = z.object({
+  malUsername: z
+    .string()
+    .min(2)
+    .max(20)
+    .describe("MyAnimeList username to import"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(15)
+    .default(5)
+    .describe("Number of recommendations to return (default 5, max 15)"),
+});
+
+export type MalImportInput = z.infer<typeof MalImportInputSchema>;
+
 /** Input for character search */
 export const CharacterSearchInputSchema = z.object({
   query: z
@@ -521,6 +557,12 @@ export const UpdateProgressInputSchema = z.object({
     .int()
     .min(0)
     .describe("Episode or chapter number reached"),
+  volumeProgress: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("Volume number reached (manga only)"),
   status: z
     .enum(["CURRENT", "COMPLETED", "PAUSED", "DROPPED", "REPEATING"])
     .optional()
