@@ -873,6 +873,13 @@ export function errorHandler(status: number, body = "") {
   });
 }
 
+/** Simulate a network timeout (never responds) */
+export function timeoutHandler() {
+  return http.post(ANILIST_URL, async () => {
+    await new Promise(() => {});
+  });
+}
+
 /** Return a GraphQL error inside a 200 response */
 export function graphqlErrorHandler(message: string, status?: number) {
   return http.post(ANILIST_URL, () => {

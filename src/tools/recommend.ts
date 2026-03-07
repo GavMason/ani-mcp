@@ -685,7 +685,7 @@ export function registerRecommendTools(server: FastMCP): void {
           return "Could not find franchise relations for this title.";
         }
 
-        const entries = buildWatchOrder(
+        const { entries, truncated } = buildWatchOrder(
           mediaId,
           relationsMap,
           args.includeSpecials,
@@ -710,6 +710,13 @@ export function registerRecommendTools(server: FastMCP): void {
           if (e.type === "special") parts.push("special");
 
           lines.push(`${i + 1}. ${e.title} (${parts.join(" - ")})`);
+        }
+
+        if (truncated) {
+          lines.push(
+            "",
+            "Note: This franchise tree was truncated at the depth limit. Some entries may be missing.",
+          );
         }
 
         return lines.join("\n");

@@ -78,12 +78,18 @@ function resolveNodeInfo(
   return { format: null, status: null };
 }
 
+/** Result of building a franchise watch order */
+export interface WatchOrderResult {
+  entries: FranchiseEntry[];
+  truncated: boolean;
+}
+
 /** Build a watch order by following SEQUEL edges from the franchise root */
 export function buildWatchOrder(
   startId: number,
   relationsMap: Map<number, RelationNode>,
   includeSpecials: boolean,
-): FranchiseEntry[] {
+): WatchOrderResult {
   const rootId = findRoot(startId, relationsMap);
   const entries: FranchiseEntry[] = [];
   const visited = new Set<number>();
@@ -137,5 +143,6 @@ export function buildWatchOrder(
     queue.push(...sides, ...sequels);
   }
 
-  return entries;
+  const truncated = queue.length > 0 && depth >= MAX_DEPTH;
+  return { entries, truncated };
 }

@@ -3,7 +3,7 @@
 import { describe, it, expect } from "vitest";
 import { anilistClient, AniListApiError } from "../../src/api/client.js";
 import { mswServer } from "../helpers/msw.js";
-import { errorHandler, graphqlErrorHandler } from "../helpers/handlers.js";
+import { errorHandler, graphqlErrorHandler, timeoutHandler } from "../helpers/handlers.js";
 
 const DUMMY_QUERY = `query { Media(id: 1) { id } }`;
 
@@ -136,6 +136,22 @@ describe("anilistClient.query", () => {
       await expect(
         anilistClient.query(DUMMY_QUERY, {}, { cache: null }),
       ).rejects.toThrow();
+    },
+    RETRY_TIMEOUT,
+  );
+
+  it(
+    "throws retryable AniList API error on network timeout",
+    async () => {
+      mswServer.use(timeoutHandler());
+      try {
+        await anilistClient.query(DUMMY_QUERY, {}, { cache: null });
+        expect.unreachable("Should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(AniListApiError);
+        expect((e as AniListApiError).retryable).toBe(true);
+        expect((e as AniListApiError).message).toContain("timed out");
+      }
     },
     RETRY_TIMEOUT,
   );

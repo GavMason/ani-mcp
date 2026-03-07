@@ -185,37 +185,43 @@ export function registerDiscoverTools(server: FastMCP): void {
           { cache: "media" },
         );
 
-        const lines: string[] = [
-          "# AniList Genres",
-          "",
-          data.GenreCollection.join(", "),
-        ];
+        const lines: string[] = [];
 
-        // Group tags by category
-        let tags = data.MediaTagCollection;
-        if (!args.includeAdultTags) {
-          tags = tags.filter((t) => !t.isAdult);
+        // Genres section
+        if (args.filter !== "tags") {
+          lines.push("# AniList Genres", "", data.GenreCollection.join(", "));
         }
 
-        const categories = new Map<
-          string,
-          Array<{ name: string; description: string }>
-        >();
-        for (const tag of tags) {
-          const cat = tag.category || "Other";
-          const list = categories.get(cat);
-          if (list) {
-            list.push(tag);
-          } else {
-            categories.set(cat, [tag]);
+        // Tags section
+        if (args.filter !== "genres") {
+          let tags = data.MediaTagCollection;
+          if (!args.includeAdultTags) {
+            tags = tags.filter((t) => !t.isAdult);
           }
-        }
 
-        lines.push("", "# Content Tags");
-        for (const [category, catTags] of categories) {
-          lines.push("", `## ${category}`);
-          for (const tag of catTags) {
-            lines.push(`  ${tag.name} - ${tag.description}`);
+          // Group tags by category
+          const categories = new Map<
+            string,
+            Array<{ name: string; description: string }>
+          >();
+          for (const tag of tags) {
+            const cat = tag.category || "Other";
+            if (args.category && cat.toLowerCase() !== args.category.toLowerCase()) continue;
+            const list = categories.get(cat);
+            if (list) {
+              list.push(tag);
+            } else {
+              categories.set(cat, [tag]);
+            }
+          }
+
+          if (lines.length > 0) lines.push("");
+          lines.push("# Content Tags");
+          for (const [category, catTags] of categories) {
+            lines.push("", `## ${category}`);
+            for (const tag of catTags) {
+              lines.push(`  ${tag.name} - ${tag.description}`);
+            }
           }
         }
 

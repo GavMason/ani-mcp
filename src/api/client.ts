@@ -19,7 +19,7 @@ const RATE_LIMIT_PER_MINUTE = process.env.VITEST ? 10_000 : 85;
 const MAX_RETRIES = 3;
 
 // Hard timeout per fetch attempt (retries get their own timeout)
-const FETCH_TIMEOUT_MS = 15_000;
+const FETCH_TIMEOUT_MS = process.env.VITEST ? 500 : 15_000;
 
 // === Logging ===
 

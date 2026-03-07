@@ -49,13 +49,13 @@ describe("buildWatchOrder", () => {
       { id: 3, title: "Part 3", format: "TV", edges: [{ type: "PREQUEL", targetId: 2, title: "Part 2", format: "TV" }] },
     ]);
 
-    const result = buildWatchOrder(3, map, false);
+    const { entries } = buildWatchOrder(3, map, false);
 
-    expect(result).toHaveLength(3);
-    expect(result[0].id).toBe(1);
-    expect(result[1].id).toBe(2);
-    expect(result[2].id).toBe(3);
-    expect(result[0].title).toBe("Part 1");
+    expect(entries).toHaveLength(3);
+    expect(entries[0].id).toBe(1);
+    expect(entries[1].id).toBe(2);
+    expect(entries[2].id).toBe(3);
+    expect(entries[0].title).toBe("Part 1");
   });
 
   it("finds root when starting from middle of chain", () => {
@@ -68,10 +68,10 @@ describe("buildWatchOrder", () => {
       { id: 3, title: "Third", format: "TV", edges: [{ type: "PREQUEL", targetId: 2, title: "Second", format: "TV" }] },
     ]);
 
-    const result = buildWatchOrder(2, map, false);
+    const { entries } = buildWatchOrder(2, map, false);
 
-    expect(result[0].id).toBe(1);
-    expect(result).toHaveLength(3);
+    expect(entries[0].id).toBe(1);
+    expect(entries).toHaveLength(3);
   });
 
   it("excludes non-main formats by default", () => {
@@ -84,10 +84,10 @@ describe("buildWatchOrder", () => {
       { id: 3, title: "Season 2", format: "TV", edges: [{ type: "PREQUEL", targetId: 1, title: "Main", format: "TV" }] },
     ]);
 
-    const result = buildWatchOrder(1, map, false);
+    const { entries } = buildWatchOrder(1, map, false);
 
-    expect(result.every((e) => e.format === "TV")).toBe(true);
-    expect(result.find((e) => e.title === "OVA")).toBeUndefined();
+    expect(entries.every((e) => e.format === "TV")).toBe(true);
+    expect(entries.find((e) => e.title === "OVA")).toBeUndefined();
   });
 
   it("includes specials when requested", () => {
@@ -100,14 +100,14 @@ describe("buildWatchOrder", () => {
       { id: 3, title: "Season 2", format: "TV", edges: [{ type: "PREQUEL", targetId: 1, title: "Main", format: "TV" }] },
     ]);
 
-    const result = buildWatchOrder(1, map, true);
+    const { entries } = buildWatchOrder(1, map, true);
 
-    expect(result).toHaveLength(3);
+    expect(entries).toHaveLength(3);
     // Special should appear between Main and Season 2
-    expect(result[0].title).toBe("Main");
-    expect(result[1].title).toBe("Special");
-    expect(result[1].type).toBe("special");
-    expect(result[2].title).toBe("Season 2");
+    expect(entries[0].title).toBe("Main");
+    expect(entries[1].title).toBe("Special");
+    expect(entries[1].type).toBe("special");
+    expect(entries[2].title).toBe("Season 2");
   });
 
   it("handles a standalone title with no relations", () => {
@@ -115,11 +115,12 @@ describe("buildWatchOrder", () => {
       { id: 1, title: "Standalone", format: "MOVIE", edges: [] },
     ]);
 
-    const result = buildWatchOrder(1, map, false);
+    const { entries, truncated } = buildWatchOrder(1, map, false);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].title).toBe("Standalone");
-    expect(result[0].format).toBe("MOVIE");
+    expect(entries).toHaveLength(1);
+    expect(entries[0].title).toBe("Standalone");
+    expect(entries[0].format).toBe("MOVIE");
+    expect(truncated).toBe(false);
   });
 
   it("prevents cycles in the graph", () => {
@@ -130,11 +131,38 @@ describe("buildWatchOrder", () => {
       { id: 3, title: "C", format: "TV", edges: [{ type: "SEQUEL", targetId: 1, title: "A", format: "TV" }] },
     ]);
 
-    const result = buildWatchOrder(1, map, false);
+    const { entries } = buildWatchOrder(1, map, false);
 
     // Should not loop forever, should visit each once
-    expect(result).toHaveLength(3);
-    const ids = result.map((e) => e.id);
+    expect(entries).toHaveLength(3);
+    const ids = entries.map((e) => e.id);
     expect(new Set(ids).size).toBe(3);
+  });
+
+  it("reports truncation when depth limit is reached", () => {
+    // Build a chain of 35 nodes (MAX_DEPTH=30)
+    const nodes = Array.from({ length: 35 }, (_, i) => ({
+      id: i + 1,
+      title: `Part ${i + 1}`,
+      format: "TV",
+      edges: i < 34
+        ? [{ type: "SEQUEL", targetId: i + 2, title: `Part ${i + 2}`, format: "TV" }]
+        : [],
+    }));
+    // Add PREQUEL edges
+    for (let i = 1; i < 35; i++) {
+      nodes[i].edges.push({
+        type: "PREQUEL",
+        targetId: i,
+        title: `Part ${i}`,
+        format: "TV",
+      });
+    }
+
+    const map = makeMap(nodes);
+    const { entries, truncated } = buildWatchOrder(1, map, false);
+
+    expect(entries).toHaveLength(30);
+    expect(truncated).toBe(true);
   });
 });

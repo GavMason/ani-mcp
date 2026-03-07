@@ -717,6 +717,14 @@ export const GenreListInputSchema = z.object({
     .boolean()
     .default(false)
     .describe("Include adult/NSFW tags in the list"),
+  filter: z
+    .enum(["all", "genres", "tags"])
+    .default("all")
+    .describe("Show only genres, only tags, or both (default all)"),
+  category: z
+    .string()
+    .optional()
+    .describe("Filter tags to a specific category (e.g. Theme, Setting, Cast)"),
 });
 
 export type GenreListInput = z.infer<typeof GenreListInputSchema>;

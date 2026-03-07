@@ -138,4 +138,39 @@ describe("anilist_genre_list", () => {
     expect(result).toContain("AniList Genres");
     expect(result).toContain("Content Tags");
   });
+
+  it("filters to genres only", async () => {
+    const result = await callTool("anilist_genre_list", { filter: "genres" });
+
+    expect(result).toContain("AniList Genres");
+    expect(result).toContain("Action");
+    expect(result).not.toContain("Content Tags");
+    expect(result).not.toContain("Mecha");
+  });
+
+  it("filters to tags only", async () => {
+    const result = await callTool("anilist_genre_list", { filter: "tags" });
+
+    expect(result).not.toContain("AniList Genres");
+    expect(result).toContain("Content Tags");
+    expect(result).toContain("Mecha");
+  });
+
+  it("filters tags by category", async () => {
+    mswServer.use(
+      genreTagHandler(
+        ["Action"],
+        [
+          { name: "Mecha", description: "Giant robots", category: "Theme", isAdult: false },
+          { name: "School", description: "Set in school", category: "Setting", isAdult: false },
+        ],
+      ),
+    );
+
+    const result = await callTool("anilist_genre_list", { category: "Theme" });
+
+    expect(result).toContain("Mecha");
+    expect(result).not.toContain("School");
+    expect(result).not.toContain("Setting");
+  });
 });
