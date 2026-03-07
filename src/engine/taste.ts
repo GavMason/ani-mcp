@@ -266,6 +266,42 @@ function computeDecay(entry: AniListMediaListEntry): number {
   return Math.exp(-DECAY_LAMBDA * Math.max(0, yearsSince));
 }
 
+/** Detailed profile breakdown: genre weights, top themes, score distribution */
+export function formatTasteProfileText(profile: TasteProfile): string[] {
+  const lines: string[] = [];
+
+  // Detailed genre breakdown
+  if (profile.genres.length > 0) {
+    lines.push("", "Genre Weights (higher = stronger preference):");
+    for (const g of profile.genres.slice(0, 10)) {
+      lines.push(`  ${g.name}: ${g.weight.toFixed(2)} (${g.count} titles)`);
+    }
+  }
+
+  // Detailed tag breakdown
+  if (profile.tags.length > 0) {
+    lines.push("", "Top Themes:");
+    for (const t of profile.tags.slice(0, 10)) {
+      lines.push(`  ${t.name}: ${t.weight.toFixed(2)} (${t.count} titles)`);
+    }
+  }
+
+  // Score distribution bar chart
+  if (profile.scoring.totalScored > 0) {
+    lines.push("", "Score Distribution:");
+    for (let s = 10; s >= 1; s--) {
+      const count = profile.scoring.distribution[s] ?? 0;
+      if (count > 0) {
+        // Cap at 30 chars
+        const bar = "#".repeat(Math.min(count, 30));
+        lines.push(`  ${s}/10: ${bar} (${count})`);
+      }
+    }
+  }
+
+  return lines;
+}
+
 /** Empty profile for users with too few scored entries */
 function emptyProfile(totalCompleted: number): TasteProfile {
   return {

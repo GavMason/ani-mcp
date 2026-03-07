@@ -526,7 +526,9 @@ export function registerWriteTools(server: FastMCP): void {
           { cache: null },
         );
 
-        anilistClient.invalidateUser(await getViewerName());
+        const viewerName = await getViewerName();
+        anilistClient.invalidateUser(viewerName);
+        invalidateUserProfiles(viewerName);
 
         // Check if entity is now in favourites (added) or absent (removed)
         const field = FAVOURITE_FIELD_MAP[args.type];
@@ -570,7 +572,9 @@ export function registerWriteTools(server: FastMCP): void {
           { cache: null },
         );
 
-        anilistClient.invalidateUser(await getViewerName());
+        const viewerName = await getViewerName();
+        anilistClient.invalidateUser(viewerName);
+        invalidateUserProfiles(viewerName);
 
         const activity = data.SaveTextActivity;
         const dateStr = new Date(activity.createdAt * 1000).toLocaleDateString(

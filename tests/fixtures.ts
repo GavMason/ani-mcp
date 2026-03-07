@@ -100,3 +100,15 @@ export function makeEntry(
     }),
   };
 }
+
+/** Create a manga list entry with sensible defaults */
+export function makeMangaEntry(
+  overrides: Partial<Parameters<typeof makeEntry>[0]> = {},
+): AniListMediaListEntry {
+  return makeEntry({
+    type: "MANGA",
+    format: "MANGA",
+    chapters: 100,
+    ...overrides,
+  });
+}

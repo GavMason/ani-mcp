@@ -1438,6 +1438,71 @@ describe("anilist_watch_order", () => {
     expect(result).toContain("2.");
   });
 
+  it("includes specials when includeSpecials is true", async () => {
+    const relations = [
+      {
+        id: 1,
+        title: { romaji: "Main Series", english: "Main Series" },
+        format: "TV",
+        status: "FINISHED",
+        relations: {
+          edges: [
+            {
+              relationType: "SIDE_STORY",
+              node: {
+                id: 2,
+                title: { romaji: "OVA Special", english: "OVA Special" },
+                format: "OVA",
+                status: "FINISHED",
+                type: "ANIME",
+                season: null,
+                seasonYear: null,
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 2,
+        title: { romaji: "OVA Special", english: "OVA Special" },
+        format: "OVA",
+        status: "FINISHED",
+        relations: {
+          edges: [
+            {
+              relationType: "PARENT",
+              node: {
+                id: 1,
+                title: { romaji: "Main Series", english: "Main Series" },
+                format: "TV",
+                status: "FINISHED",
+                type: "ANIME",
+                season: null,
+                seasonYear: null,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    mswServer.use(watchOrderHandler(1, "Main Series", relations));
+
+    // Without specials - should only show main series
+    const without = await callTool("anilist_watch_order", { id: 1 });
+    expect(without).toContain("Main Series");
+    expect(without).not.toContain("OVA Special");
+
+    // With specials - should include the OVA
+    const withSpecials = await callTool("anilist_watch_order", {
+      id: 1,
+      includeSpecials: true,
+    });
+    expect(withSpecials).toContain("Main Series");
+    expect(withSpecials).toContain("OVA Special");
+    expect(withSpecials).toContain("including specials");
+  });
+
   it("resolves title to ID when no ID provided", async () => {
     const relations = [
       {

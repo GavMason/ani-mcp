@@ -40,6 +40,7 @@ import { SEARCH_MEDIA_QUERY } from "../api/queries.js";
 import {
   buildTasteProfile,
   describeTasteProfile,
+  formatTasteProfileText,
   type TasteProfile,
 } from "../engine/taste.js";
 import { matchCandidates, explainMatch } from "../engine/matcher.js";
@@ -151,40 +152,8 @@ export function registerRecommendTools(server: FastMCP): void {
           `# Taste Profile: ${username}`,
           "",
           describeTasteProfile(profile, username),
+          ...formatTasteProfileText(profile),
         ];
-
-        // Detailed genre breakdown
-        if (profile.genres.length > 0) {
-          lines.push("", "Genre Weights (higher = stronger preference):");
-          for (const g of profile.genres.slice(0, 10)) {
-            lines.push(
-              `  ${g.name}: ${g.weight.toFixed(2)} (${g.count} titles)`,
-            );
-          }
-        }
-
-        // Detailed tag breakdown
-        if (profile.tags.length > 0) {
-          lines.push("", "Top Themes:");
-          for (const t of profile.tags.slice(0, 10)) {
-            lines.push(
-              `  ${t.name}: ${t.weight.toFixed(2)} (${t.count} titles)`,
-            );
-          }
-        }
-
-        // Score distribution bar chart
-        if (profile.scoring.totalScored > 0) {
-          lines.push("", "Score Distribution:");
-          for (let s = 10; s >= 1; s--) {
-            const count = profile.scoring.distribution[s] ?? 0;
-            if (count > 0) {
-              // Cap at 30 chars
-              const bar = "#".repeat(Math.min(count, 30));
-              lines.push(`  ${s}/10: ${bar} (${count})`);
-            }
-          }
-        }
 
         return lines.join("\n");
       } catch (error) {

@@ -563,7 +563,7 @@ export const RateInputSchema = z.object({
     .number()
     .min(0)
     .max(10)
-    .describe("Score on a 0-10 scale. Use 0 to remove a score."),
+    .describe("Score on a 0-10 scale (decimals like 7.5 are supported). Use 0 to remove a score."),
 });
 
 export type RateInput = z.infer<typeof RateInputSchema>;
