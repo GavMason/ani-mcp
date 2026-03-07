@@ -563,7 +563,9 @@ export const RateInputSchema = z.object({
     .number()
     .min(0)
     .max(10)
-    .describe("Score on a 0-10 scale (decimals like 7.5 are supported). Use 0 to remove a score."),
+    .describe(
+      "Score on a 0-10 scale (decimals like 7.5 are supported). Use 0 to remove a score.",
+    ),
 });
 
 export type RateInput = z.infer<typeof RateInputSchema>;
@@ -597,10 +599,7 @@ export const ExplainInputSchema = z
       .positive()
       .optional()
       .describe("AniList media ID to evaluate against your taste profile"),
-    title: z
-      .string()
-      .optional()
-      .describe("Search by title if no ID is known"),
+    title: z.string().optional().describe("Search by title if no ID is known"),
     username: usernameSchema
       .optional()
       .describe(
@@ -630,10 +629,7 @@ export const SimilarInputSchema = z
       .positive()
       .optional()
       .describe("AniList media ID to find similar titles for"),
-    title: z
-      .string()
-      .optional()
-      .describe("Search by title if no ID is known"),
+    title: z.string().optional().describe("Search by title if no ID is known"),
     limit: z
       .number()
       .int()
