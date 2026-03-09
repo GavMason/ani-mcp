@@ -497,6 +497,38 @@ export const defaultHandlers = [
       });
     }
 
+    // Toggle like (activity reactions)
+    if (matchQuery(body, "ToggleLike")) {
+      return gql({
+        ToggleLike: [{ id: 1, name: "testuser" }],
+      });
+    }
+
+    // Save activity reply
+    if (matchQuery(body, "SaveActivityReply")) {
+      return gql({
+        SaveActivityReply: {
+          id: 2000,
+          text: (body.variables?.text as string) ?? "",
+          createdAt: 1700000000,
+          user: { name: "testuser" },
+        },
+      });
+    }
+
+    // User following list
+    if (matchQuery(body, "UserFollowing")) {
+      return gql({
+        Page: {
+          pageInfo: { total: 2, hasNextPage: false },
+          following: [
+            { id: 2, name: "friend1" },
+            { id: 3, name: "friend2" },
+          ],
+        },
+      });
+    }
+
     // Toggle favourite
     if (matchQuery(body, "ToggleFavourite")) {
       // Determine which category was toggled and add the ID
@@ -1186,5 +1218,40 @@ export function jikanListHandler(
 export function jikanNotFoundHandler() {
   return http.get(`${JIKAN_BASE}/users/:username/animelist`, () => {
     return new HttpResponse(null, { status: 404 });
+  });
+}
+
+/** Override user following to return specific users */
+export function followingHandler(
+  following: Array<{ id: number; name: string }>,
+  pageInfo?: { total: number; hasNextPage: boolean },
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "UserFollowing")) return undefined;
+    return gql({
+      Page: {
+        pageInfo: pageInfo ?? { total: following.length, hasNextPage: false },
+        following,
+      },
+    });
+  });
+}
+
+/** Override toggle like to return specific data */
+export function toggleLikeHandler(users: Array<{ id: number; name: string }>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "ToggleLike")) return undefined;
+    return gql({ ToggleLike: users });
+  });
+}
+
+/** Override save activity reply */
+export function activityReplyHandler(reply: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "SaveActivityReply")) return undefined;
+    return gql({ SaveActivityReply: reply });
   });
 }
