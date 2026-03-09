@@ -147,6 +147,7 @@ export function registerInfoTools(server: FastMCP): void {
     execute: async (args) => {
       try {
         const variables: Record<string, unknown> = {
+          type: args.type,
           language: args.language,
         };
         if (args.id) variables.id = args.id;

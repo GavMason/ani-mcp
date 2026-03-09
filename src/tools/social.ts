@@ -169,6 +169,7 @@ export function registerSocialTools(server: FastMCP): void {
     execute: async (args) => {
       try {
         const variables: Record<string, unknown> = {
+          type: args.type,
           page: args.page,
           perPage: args.limit,
           sort: REVIEW_SORT_MAP[args.sort],
