@@ -208,7 +208,7 @@ export function registerDiscoverTools(server: FastMCP): void {
             const cat = tag.category || "Other";
             if (
               args.category &&
-              cat.toLowerCase() !== args.category.toLowerCase()
+              !cat.toLowerCase().startsWith(args.category.toLowerCase())
             )
               continue;
             const list = categories.get(cat);

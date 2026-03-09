@@ -176,7 +176,7 @@ function computeTagWeights(
 
     for (const tag of entry.media.tags) {
       if (tag.isMediaSpoiler) continue;
-      if (categoryFilter && tag.category !== categoryFilter) continue;
+      if (categoryFilter && !tag.category.startsWith(categoryFilter)) continue;
 
       // Tag rank (0-100) indicates how relevant the tag is to this media
       const relevance = tag.rank / 100;
