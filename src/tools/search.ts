@@ -127,7 +127,7 @@ export function registerSearchTools(server: FastMCP): void {
     },
     execute: async (args) => {
       try {
-        const variables: Record<string, unknown> = {};
+        const variables: Record<string, unknown> = { type: args.type };
         if (args.id) variables.id = args.id;
         if (args.title) variables.search = resolveAlias(args.title);
 
@@ -319,6 +319,7 @@ export function registerSearchTools(server: FastMCP): void {
     execute: async (args) => {
       try {
         const variables: Record<string, unknown> = {
+          type: args.type,
           perPage: args.limit,
         };
         if (args.id) variables.id = args.id;
