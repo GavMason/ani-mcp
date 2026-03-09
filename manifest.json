@@ -36,13 +36,13 @@
     "anilist_username": {
       "type": "string",
       "title": "AniList Username",
-      "description": "Default AniList username for list and stats tools",
+      "description": "Optional. Your AniList username so tools don't need to ask each time.",
       "required": false
     },
     "anilist_token": {
       "type": "string",
       "title": "AniList Token",
-      "description": "AniList OAuth token for write operations (update progress, rate, etc.)",
+      "description": "Optional. Only needed for write operations (rate, update progress, etc.). Leave blank for read-only use.",
       "required": false,
       "sensitive": true
     }

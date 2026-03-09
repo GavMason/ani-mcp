@@ -30,6 +30,13 @@ if (!process.env.ANILIST_TOKEN) {
 const server = new FastMCP({
   name: "ani-mcp",
   version: "0.14.0",
+  instructions:
+    "ani-mcp is a local MCP server for AniList. " +
+    "Read-only tools work without authentication. " +
+    "Write tools require ANILIST_TOKEN set in the server's environment config. " +
+    "If a tool says the token is not set, tell the user to add ANILIST_TOKEN " +
+    "to their MCP server config and restart. " +
+    "There is no in-app AniList integration or settings page to connect.",
 });
 
 registerSearchTools(server);
