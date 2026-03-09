@@ -148,6 +148,10 @@ Works with any MCP-compatible client.
 | `anilist_reviews` | Community reviews for a title |
 | `anilist_favourite` | Toggle favourite on anime, manga, character, staff, or studio |
 | `anilist_activity` | Post a text activity to your feed |
+| `anilist_group_pick` | Find anime/manga for a group to watch together |
+| `anilist_shared_planning` | Find overlap between two users' planning lists |
+| `anilist_follow_suggestions` | Rank followed users by taste compatibility |
+| `anilist_react` | Like or reply to an activity |
 
 ### Analytics
 

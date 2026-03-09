@@ -778,6 +778,41 @@ export const STUDIO_SEARCH_QUERY = `
   }
 `;
 
+/** Toggle like on an activity or activity reply */
+export const TOGGLE_LIKE_MUTATION = `
+  mutation ToggleLike($id: Int, $type: LikeableType) {
+    ToggleLike(id: $id, type: $type) {
+      id
+      name
+    }
+  }
+`;
+
+/** Post a reply to an activity */
+export const SAVE_ACTIVITY_REPLY_MUTATION = `
+  mutation SaveActivityReply($activityId: Int, $text: String!) {
+    SaveActivityReply(activityId: $activityId, text: $text) {
+      id
+      text
+      createdAt
+      user { name }
+    }
+  }
+`;
+
+/** Get a user's following list */
+export const USER_FOLLOWING_QUERY = `
+  query UserFollowing($userId: Int!, $page: Int, $perPage: Int) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { total hasNextPage }
+      following(userId: $userId) {
+        id
+        name
+      }
+    }
+  }
+`;
+
 /** Batch-fetch relations for a list of media IDs */
 export const BATCH_RELATIONS_QUERY = `
   query BatchRelations($ids: [Int]) {

@@ -1087,6 +1087,104 @@ export const BatchUpdateInputSchema = z.object({
 
 export type BatchUpdateInput = z.infer<typeof BatchUpdateInputSchema>;
 
+// === 0.12.0 Social v2 ===
+
+/** Input for group recommendations across multiple users */
+export const GroupPickInputSchema = z.object({
+  users: z
+    .array(usernameSchema)
+    .min(2)
+    .max(10)
+    .describe("AniList usernames (2-10) to find group recommendations for"),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Recommend anime or manga"),
+  source: z
+    .enum(["PLANNING", "COMPLETED"])
+    .default("PLANNING")
+    .describe(
+      "PLANNING = overlap in plan-to-watch lists. COMPLETED = titles everyone loved.",
+    ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(15)
+    .default(10)
+    .describe("Number of recommendations to return (default 10, max 15)"),
+});
+
+export type GroupPickInput = z.infer<typeof GroupPickInputSchema>;
+
+/** Input for finding overlap between two users' planning lists */
+export const SharedPlanningInputSchema = z.object({
+  user1: usernameSchema.describe("First AniList username"),
+  user2: usernameSchema.describe("Second AniList username"),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Compare anime or manga planning lists"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(25)
+    .describe("Max entries to show (default 25, max 50)"),
+});
+
+export type SharedPlanningInput = z.infer<typeof SharedPlanningInputSchema>;
+
+/** Input for finding users with similar taste */
+export const FollowSuggestionsInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Compare anime or manga taste"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .default(10)
+    .describe("Number of suggestions to return (default 10, max 20)"),
+});
+
+export type FollowSuggestionsInput = z.infer<
+  typeof FollowSuggestionsInputSchema
+>;
+
+/** Input for reacting to an activity (like or reply) */
+export const ReactInputSchema = z
+  .object({
+    activityId: z
+      .number()
+      .int()
+      .positive()
+      .describe("ID of the activity to react to (from anilist_feed)"),
+    action: z
+      .enum(["LIKE", "REPLY"])
+      .describe("LIKE = toggle like on the activity. REPLY = post a reply."),
+    text: z
+      .string()
+      .min(1)
+      .max(2000)
+      .optional()
+      .describe("Reply text (required when action is REPLY)"),
+  })
+  .refine(
+    (data) => data.action !== "REPLY" || (data.text && data.text.length > 0),
+    { message: "Reply text is required when action is REPLY." },
+  );
+
+export type ReactInput = z.infer<typeof ReactInputSchema>;
+
 // === Shareable Cards ===
 
 /** Input for generating a taste profile card image */

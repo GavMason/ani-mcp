@@ -2,6 +2,13 @@
 
 All notable changes to ani-mcp are documented here.
 
+## 0.12.0
+
+- Add `anilist_group_pick` - find anime/manga for a group to watch together (intersection of planning lists)
+- Add `anilist_shared_planning` - find overlap between two users' planning lists
+- Add `anilist_follow_suggestions` - rank followed users by taste compatibility
+- Add `anilist_react` - like or reply to activities in a user's feed
+
 ## 0.11.0
 
 - Add "Try it in 30 seconds" quick-start in README (zero-config setup)
