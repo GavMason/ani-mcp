@@ -1,13 +1,17 @@
-/** Integration tests for social tools: feed, profile, reviews */
+/** Integration tests for social tools: feed, profile, reviews, social v2 */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
 import {
   feedHandler,
   profileHandler,
   reviewsHandler,
+  listHandler,
+  followingHandler,
+  multiStatusListHandler,
 } from "../helpers/handlers.js";
+import { makeEntry } from "../fixtures.js";
 
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
 let cleanup: Awaited<ReturnType<typeof createTestClient>>["cleanup"];
@@ -280,5 +284,142 @@ describe("anilist_reviews", () => {
     );
     const result = await callTool("anilist_reviews", { id: 1 });
     expect(result).toContain("No votes");
+  });
+});
+
+// === anilist_group_pick ===
+
+describe("anilist_group_pick", () => {
+  it("finds titles on all users planning lists", async () => {
+    // All three users share media ID 1
+    const shared = makeEntry({ id: 1, genres: ["Action"], status: "PLANNING" });
+    const only12 = makeEntry({ id: 2, genres: ["Comedy"], status: "PLANNING" });
+    const only1 = makeEntry({ id: 3, genres: ["Drama"], status: "PLANNING" });
+
+    mswServer.use(
+      multiStatusListHandler({
+        PLANNING: (() => {
+          return [shared, only12, only1];
+        })(),
+      }),
+    );
+
+    const result = await callTool("anilist_group_pick", {
+      users: ["user1", "user2", "user3"],
+      source: "PLANNING",
+    });
+    // Default handler returns same list for all users, so all entries overlap
+    expect(result).toContain("Group Picks");
+    expect(result).toContain("user1");
+    expect(result).toContain("Test Anime");
+  });
+
+  it("shows no overlap message when lists are disjoint", async () => {
+    mswServer.use(listHandler([], "PLANNING"));
+    const result = await callTool("anilist_group_pick", {
+      users: ["user1", "user2"],
+      source: "PLANNING",
+    });
+    expect(result).toContain("No overlap");
+  });
+
+  it("works with COMPLETED source", async () => {
+    const result = await callTool("anilist_group_pick", {
+      users: ["user1", "user2"],
+      source: "COMPLETED",
+    });
+    expect(result).toContain("Group Picks");
+    expect(result).toContain("completed");
+  });
+});
+
+// === anilist_shared_planning ===
+
+describe("anilist_shared_planning", () => {
+  it("finds overlap between two users planning lists", async () => {
+    const result = await callTool("anilist_shared_planning", {
+      user1: "alice",
+      user2: "bob",
+    });
+    // Default handler returns same entries for both, so full overlap
+    expect(result).toContain("Shared Planning: alice & bob");
+    expect(result).toContain("Overlap:");
+    expect(result).toContain("Both planning to watch");
+  });
+
+  it("shows no overlap when lists are empty", async () => {
+    mswServer.use(listHandler([], "PLANNING"));
+    const result = await callTool("anilist_shared_planning", {
+      user1: "alice",
+      user2: "bob",
+    });
+    expect(result).toContain("No titles in common");
+  });
+
+  it("shows unique counts", async () => {
+    const result = await callTool("anilist_shared_planning", {
+      user1: "alice",
+      user2: "bob",
+    });
+    // Default handler returns same list, so overlap = all, unique = 0
+    expect(result).toContain("Overlap:");
+  });
+});
+
+// === anilist_follow_suggestions ===
+
+describe("anilist_follow_suggestions", () => {
+  it("ranks followed users by compatibility", async () => {
+    const result = await callTool("anilist_follow_suggestions", {
+      username: "testuser",
+    });
+    // Default handlers: following returns friend1/friend2,
+    // both share the default completed entries
+    expect(result).toContain("Taste Matches");
+    expect(result).toContain("compatible");
+  });
+
+  it("shows empty message when not following anyone", async () => {
+    mswServer.use(followingHandler([]));
+    const result = await callTool("anilist_follow_suggestions", {
+      username: "testuser",
+    });
+    expect(result).toContain("isn't following anyone");
+  });
+});
+
+// === anilist_react ===
+
+describe("anilist_react", () => {
+  beforeEach(() => {
+    process.env.ANILIST_TOKEN = "test-token";
+  });
+
+  it("toggles like on an activity", async () => {
+    const result = await callTool("anilist_react", {
+      activityId: 1,
+      action: "LIKE",
+    });
+    expect(result).toContain("Toggled like");
+    expect(result).toContain("1");
+  });
+
+  it("posts a reply to an activity", async () => {
+    const result = await callTool("anilist_react", {
+      activityId: 1,
+      action: "REPLY",
+      text: "Great post!",
+    });
+    expect(result).toContain("Reply posted");
+    expect(result).toContain("Great post!");
+  });
+
+  it("requires auth token", async () => {
+    delete process.env.ANILIST_TOKEN;
+    const result = await callTool("anilist_react", {
+      activityId: 1,
+      action: "LIKE",
+    });
+    expect(result).toContain("ANILIST_TOKEN");
   });
 });

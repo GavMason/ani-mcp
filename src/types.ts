@@ -585,6 +585,29 @@ export interface BatchRelationsResponse {
   };
 }
 
+/** Response from toggling a like on an activity */
+export interface ToggleLikeResponse {
+  ToggleLike: Array<{ id: number; name: string }>;
+}
+
+/** Response from posting an activity reply */
+export interface SaveActivityReplyResponse {
+  SaveActivityReply: {
+    id: number;
+    text: string;
+    createdAt: number;
+    user: { name: string };
+  };
+}
+
+/** Paginated following list */
+export interface UserFollowingResponse {
+  Page: {
+    pageInfo: { total: number; hasNextPage: boolean };
+    following: Array<{ id: number; name: string }>;
+  };
+}
+
 /** Single studio with production history */
 export interface StudioSearchResponse {
   Studio: {
