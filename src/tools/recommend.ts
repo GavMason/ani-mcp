@@ -64,10 +64,7 @@ import {
   getCachedProfile,
   setCachedProfile,
 } from "../engine/profile-cache.js";
-
-// User scores are normalized to 1-10 via score(format: POINT_10) in the list query.
-// Community meanScore is 0-100. Multiply user score by 10 to compare on the same scale.
-const USER_SCORE_SCALE = 10;
+import { computeWrappedStats } from "../engine/wrapped.js";
 
 // === Helpers ===
 
@@ -955,95 +952,54 @@ export function registerRecommendTools(server: FastMCP): void {
           return `${username} didn't complete any titles in ${year}.`;
         }
 
-        // Split by media type
-        const anime = yearEntries.filter((e) => e.media.type === "ANIME");
-        const manga = yearEntries.filter((e) => e.media.type === "MANGA");
-
+        const stats = computeWrappedStats(yearEntries, year);
         const lines: string[] = [`# ${year} Wrapped for ${username}`, ""];
 
         // Headline stats
         const parts: string[] = [];
-        if (anime.length > 0) parts.push(`${anime.length} anime`);
-        if (manga.length > 0) parts.push(`${manga.length} manga`);
+        if (stats.animeCount > 0) parts.push(`${stats.animeCount} anime`);
+        if (stats.mangaCount > 0) parts.push(`${stats.mangaCount} manga`);
         lines.push(`Completed ${parts.join(" and ")} in ${year}.`);
 
-        // Scoring overview
-        const scored = yearEntries.filter((e) => e.score > 0);
-        if (scored.length > 0) {
-          const avgScore =
-            scored.reduce((sum, e) => sum + e.score, 0) / scored.length;
+        if (stats.scoredCount > 0) {
           lines.push(
-            `Average score: ${avgScore.toFixed(1)}/10 across ${scored.length} rated titles.`,
+            `Average score: ${stats.avgScore.toFixed(1)}/10 across ${stats.scoredCount} rated titles.`,
           );
         }
 
-        // Highest rated
-        if (scored.length > 0) {
-          const topRated = [...scored].sort((a, b) => b.score - a.score);
-          const top = topRated[0];
+        if (stats.topRated) {
           lines.push(
-            `Highest rated: ${getTitle(top.media.title)} (${top.score}/10)`,
+            `Highest rated: ${stats.topRated.title} (${stats.topRated.score}/10)`,
           );
         }
 
-        // Most controversial - biggest gap between user score and community score
-        const controversial = scored
-          .filter((e) => e.media.meanScore !== null)
-          .map((e) => ({
-            entry: e,
-            gap: Math.abs(
-              e.score * USER_SCORE_SCALE - (e.media.meanScore ?? 0),
-            ),
-          }))
-          .sort((a, b) => b.gap - a.gap);
-
-        if (controversial.length > 0 && controversial[0].gap >= 20) {
-          const c = controversial[0].entry;
-          const communityScore = c.media.meanScore ?? 0;
-          const direction =
-            c.score * USER_SCORE_SCALE > communityScore ? "above" : "below";
+        if (stats.controversial) {
+          const c = stats.controversial;
           lines.push(
-            `Most controversial: ${getTitle(c.media.title)} ` +
-              `(you: ${c.score}/10, community avg: ${(communityScore / 10).toFixed(1)}/10 - ` +
-              `${(controversial[0].gap / 10).toFixed(1)} pts ${direction} consensus)`,
+            `Most controversial: ${c.title} ` +
+              `(you: ${c.userScore}/10, community avg: ${(c.communityScore / 10).toFixed(1)}/10 - ` +
+              `${(c.gap / 10).toFixed(1)} pts ${c.direction} consensus)`,
           );
         }
 
-        // Genre breakdown for the year
-        const genreCounts = new Map<string, number>();
-        for (const entry of yearEntries) {
-          for (const genre of entry.media.genres) {
-            genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
-          }
-        }
-        const topGenres = [...genreCounts.entries()]
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5);
-
-        if (topGenres.length > 0) {
+        if (stats.topGenres.length > 0) {
           lines.push("");
           lines.push("Top genres this year:");
-          for (const [genre, count] of topGenres) {
-            lines.push(`  ${genre}: ${count} titles`);
+          for (const g of stats.topGenres) {
+            lines.push(`  ${g.name}: ${g.count} titles`);
           }
         }
-
-        // Episode/chapter count (prefer media total for completed entries)
-        const totalEps = anime.reduce(
-          (sum, e) => sum + (e.media.episodes ?? e.progress ?? 0),
-          0,
-        );
-        const totalChapters = manga.reduce(
-          (sum, e) => sum + (e.media.chapters ?? e.progress ?? 0),
-          0,
-        );
 
         lines.push("");
         const consumption: string[] = [];
-        if (totalEps > 0)
-          consumption.push(`${totalEps.toLocaleString()} episodes watched`);
-        if (totalChapters > 0)
-          consumption.push(`${totalChapters.toLocaleString()} chapters read`);
+        if (stats.totalEpisodes > 0)
+          consumption.push(
+            `${stats.totalEpisodes.toLocaleString()} episodes watched`,
+          );
+        if (stats.totalChapters > 0)
+          consumption.push(
+            `${stats.totalChapters.toLocaleString()} chapters read`,
+          );
         if (consumption.length > 0) lines.push(consumption.join(", "));
 
         return lines.join("\n");

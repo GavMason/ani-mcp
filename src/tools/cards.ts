@@ -1,11 +1,23 @@
-/** Shareable card image tools: taste profile and compatibility cards */
+/** Shareable card image tools: taste profile, compatibility, wrapped, and seasonal recap */
 
 import type { FastMCP } from "fastmcp";
 import { imageContent, UserError } from "fastmcp";
 import { anilistClient } from "../api/client.js";
-import { USER_PROFILE_QUERY } from "../api/queries.js";
-import type { UserProfileResponse } from "../types.js";
-import { TasteCardInputSchema, CompatCardInputSchema } from "../schemas.js";
+import {
+  USER_PROFILE_QUERY,
+  COMPLETED_BY_DATE_QUERY,
+} from "../api/queries.js";
+import type {
+  UserProfileResponse,
+  CompletedByDateResponse,
+  AniListMediaListEntry,
+} from "../types.js";
+import {
+  TasteCardInputSchema,
+  CompatCardInputSchema,
+  WrappedCardInputSchema,
+  SeasonalRecapCardInputSchema,
+} from "../schemas.js";
 import { getDefaultUsername, getTitle } from "../utils.js";
 import { buildTasteProfile } from "../engine/taste.js";
 import {
@@ -15,15 +27,19 @@ import {
 import {
   buildTasteCardSvg,
   buildCompatCardSvg,
+  buildWrappedCardSvg,
+  buildSeasonalRecapCardSvg,
   svgToPng,
   fetchAvatarB64,
   type CompatCardData,
+  type SeasonalRecapData,
 } from "../engine/card.js";
 import {
   computeListHash,
   getCachedProfile,
   setCachedProfile,
 } from "../engine/profile-cache.js";
+import { computeWrappedStats } from "../engine/wrapped.js";
 
 // === Registration ===
 
@@ -173,6 +189,165 @@ export function registerCardTools(server: FastMCP): void {
       };
 
       const svg = buildCompatCardSvg(data);
+      const png = await svgToPng(svg);
+      return imageContent({ buffer: png });
+    },
+  });
+
+  // === Year Wrapped Card ===
+
+  server.addTool({
+    name: "anilist_wrapped_card",
+    description:
+      "Generate a shareable year-in-review card image for an AniList user. " +
+      "Returns a PNG image showing titles completed, top genres, score distribution, " +
+      "highlights, and consumption stats. Use when someone wants a visual recap of their year.",
+    parameters: WrappedCardInputSchema,
+    annotations: {
+      title: "Year Wrapped Card",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      const username = args.username ?? getDefaultUsername();
+      const year = args.year ?? new Date().getFullYear();
+
+      const types: Array<"ANIME" | "MANGA"> =
+        args.type === "BOTH"
+          ? ["ANIME", "MANGA"]
+          : [args.type as "ANIME" | "MANGA"];
+
+      // Server-side date filter (FuzzyDateInt: YYYYMMDD)
+      const completedAfter = year * 10000 + 100 + 1;
+      const completedBefore = year * 10000 + 1231;
+
+      // Paginate through results (types in parallel)
+      async function fetchType(type: "ANIME" | "MANGA") {
+        const results: AniListMediaListEntry[] = [];
+        let page = 1;
+        let hasNext = true;
+        while (hasNext) {
+          const data = await anilistClient.query<CompletedByDateResponse>(
+            COMPLETED_BY_DATE_QUERY,
+            {
+              userName: username,
+              type,
+              completedAfter,
+              completedBefore,
+              page,
+              perPage: 50,
+            },
+            { cache: "list" },
+          );
+          results.push(...data.Page.mediaList);
+          hasNext = data.Page.pageInfo.hasNextPage;
+          page++;
+        }
+        return results;
+      }
+
+      const [yearEntries, avatarUrl] = await Promise.all([
+        Promise.all(types.map(fetchType)).then((r) => r.flat()),
+        getAvatarUrl(username),
+      ]);
+
+      if (yearEntries.length === 0) {
+        return `${username} didn't complete any titles in ${year}.`;
+      }
+
+      const stats = computeWrappedStats(yearEntries, year);
+      const avatarB64 = avatarUrl ? await fetchAvatarB64(avatarUrl) : null;
+
+      const svg = buildWrappedCardSvg({
+        username,
+        avatarB64,
+        stats,
+      });
+      const png = await svgToPng(svg);
+      return imageContent({ buffer: png });
+    },
+  });
+
+  // === Seasonal Recap Card ===
+
+  server.addTool({
+    name: "anilist_seasonal_recap_card",
+    description:
+      "Generate a shareable seasonal recap card image for an AniList user. " +
+      "Returns a PNG image showing pick/finish/drop counts, hit rate, " +
+      "status breakdown, and top-scored titles from a season.",
+    parameters: SeasonalRecapCardInputSchema,
+    annotations: {
+      title: "Seasonal Recap Card",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      const username = args.username ?? getDefaultUsername();
+
+      // Default to current/most recent season
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const defaultSeason =
+        month <= 3
+          ? "WINTER"
+          : month <= 6
+            ? "SPRING"
+            : month <= 9
+              ? "SUMMER"
+              : "FALL";
+      const season = args.season ?? defaultSeason;
+      const year = args.year ?? now.getFullYear();
+
+      // Fetch full list and filter to seasonal entries
+      const [entries, avatarUrl] = await Promise.all([
+        anilistClient.fetchList(username, "ANIME"),
+        getAvatarUrl(username),
+      ]);
+
+      const seasonal = entries.filter(
+        (e) => e.media.season === season && e.media.seasonYear === year,
+      );
+
+      if (seasonal.length === 0) {
+        return `${username} has no entries from ${season} ${year}.`;
+      }
+
+      const finished = seasonal.filter((e) => e.status === "COMPLETED");
+      const dropped = seasonal.filter((e) => e.status === "DROPPED");
+      const watching = seasonal.filter(
+        (e) => e.status === "CURRENT" || e.status === "PAUSED",
+      );
+
+      const scored = finished.filter((e) => e.score > 0);
+      const avgScore =
+        scored.length > 0
+          ? scored.reduce((sum, e) => sum + e.score, 0) / scored.length
+          : 0;
+
+      const topPicks = [...scored]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6)
+        .map((e) => ({ title: getTitle(e.media.title), score: e.score }));
+
+      const avatarB64 = avatarUrl ? await fetchAvatarB64(avatarUrl) : null;
+
+      const data: SeasonalRecapData = {
+        username,
+        season,
+        year,
+        avatarB64,
+        picked: seasonal.length,
+        finished: finished.length,
+        dropped: dropped.length,
+        watching: watching.length,
+        avgScore,
+        topPicks,
+      };
+
+      const svg = buildSeasonalRecapCardSvg(data);
       const png = await svgToPng(svg);
       return imageContent({ buffer: png });
     },

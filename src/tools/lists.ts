@@ -11,6 +11,7 @@ import {
   ListInputSchema,
   StatsInputSchema,
   LookupInputSchema,
+  ListExportInputSchema,
 } from "../schemas.js";
 import type {
   AniListMediaListEntry,
@@ -262,6 +263,119 @@ export function registerListTools(server: FastMCP): void {
       }
     },
   });
+
+  // === List Export ===
+
+  server.addTool({
+    name: "anilist_export",
+    description:
+      "Export a user's anime or manga list as CSV or JSON for backup or migration. " +
+      "Use when the user wants to download, back up, or transfer their list data.",
+    parameters: ListExportInputSchema,
+    annotations: {
+      title: "Export List",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        const username = getDefaultUsername(args.username);
+
+        const entries = await anilistClient.fetchList(
+          username,
+          args.type,
+          args.status,
+        );
+
+        if (entries.length === 0) {
+          const statusLabel = args.status
+            ? ` with status ${args.status}`
+            : "";
+          return `${username} has no ${args.type.toLowerCase()} entries${statusLabel}.`;
+        }
+
+        if (args.format === "json") {
+          const rows = entries.map((e) => exportRow(e));
+          return JSON.stringify(rows, null, 2);
+        }
+
+        // CSV
+        const header =
+          "title,type,format,status,score,progress,total,started,completed,updated,anilist_id,anilist_url";
+        const rows = entries.map((e) => {
+          const r = exportRow(e);
+          return [
+            csvEscape(r.title),
+            r.type,
+            r.format,
+            r.status,
+            r.score,
+            r.progress,
+            r.total,
+            r.started,
+            r.completed,
+            r.updated,
+            r.anilist_id,
+            r.anilist_url,
+          ].join(",");
+        });
+
+        return [header, ...rows].join("\n");
+      } catch (error) {
+        return throwToolError(error, "exporting list");
+      }
+    },
+  });
+}
+
+/** Build an export row from a list entry */
+function exportRow(e: AniListMediaListEntry) {
+  const title = getTitle(e.media.title);
+  const total = e.media.episodes ?? e.media.chapters ?? "";
+  const started = fuzzyDateStr(e.startedAt);
+  const completed = fuzzyDateStr(e.completedAt);
+  const updated = e.updatedAt
+    ? new Date(e.updatedAt * 1000).toISOString().slice(0, 10)
+    : "";
+
+  return {
+    title,
+    type: e.media.type ?? "",
+    format: e.media.format ?? "",
+    status: e.status,
+    score: e.score > 0 ? e.score : "",
+    progress: e.progress,
+    total,
+    started,
+    completed,
+    updated,
+    anilist_id: e.media.id,
+    anilist_url: e.media.siteUrl ?? `https://anilist.co/anime/${e.media.id}`,
+  };
+}
+
+/** Format a FuzzyDate to YYYY-MM-DD or partial */
+function fuzzyDateStr(d: {
+  year: number | null;
+  month: number | null;
+  day: number | null;
+} | null): string {
+  if (!d || !d.year) return "";
+  const y = String(d.year);
+  const m = d.month ? String(d.month).padStart(2, "0") : "";
+  const day = d.day ? String(d.day).padStart(2, "0") : "";
+  if (m && day) return `${y}-${m}-${day}`;
+  if (m) return `${y}-${m}`;
+  return y;
+}
+
+/** Escape a value for CSV (wrap in quotes if needed) */
+function csvEscape(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
 }
 
 /** Fetch and format custom lists for a user */

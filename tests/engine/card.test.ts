@@ -4,8 +4,12 @@ import { describe, it, expect } from "vitest";
 import {
   buildTasteCardSvg,
   buildCompatCardSvg,
+  buildWrappedCardSvg,
+  buildSeasonalRecapCardSvg,
   svgToPng,
   type CompatCardData,
+  type WrappedCardData,
+  type SeasonalRecapData,
 } from "../../src/engine/card.js";
 import type { TasteProfile } from "../../src/engine/taste.js";
 
@@ -164,6 +168,168 @@ describe("buildCompatCardSvg", () => {
     const svg = buildCompatCardSvg({ ...baseData, divergences: [] });
 
     expect(svg).toContain("No major differences");
+  });
+
+  it("includes score distributions for both users", () => {
+    const svg = buildCompatCardSvg(baseData);
+
+    expect(svg).toContain("Alice Scores");
+    expect(svg).toContain("Bob Scores");
+  });
+});
+
+describe("buildWrappedCardSvg", () => {
+  const baseData: WrappedCardData = {
+    username: "TestUser",
+    avatarB64: null,
+    stats: {
+      year: 2025,
+      animeCount: 30,
+      mangaCount: 10,
+      totalEpisodes: 360,
+      totalChapters: 500,
+      avgScore: 7.5,
+      scoredCount: 35,
+      topRated: { title: "Steins;Gate", score: 10 },
+      controversial: {
+        title: "Sword Art Online",
+        userScore: 9,
+        communityScore: 65,
+        gap: 25,
+        direction: "above",
+      },
+      topGenres: [
+        { name: "Action", count: 20 },
+        { name: "Drama", count: 15 },
+        { name: "Comedy", count: 10 },
+      ],
+      scoreDistribution: { 7: 10, 8: 12, 9: 8, 10: 5 },
+    },
+  };
+
+  it("produces valid SVG with username and year", () => {
+    const svg = buildWrappedCardSvg(baseData);
+
+    expect(svg).toContain("<svg");
+    expect(svg).toContain("</svg>");
+    expect(svg).toContain("TestUser");
+    expect(svg).toContain("2025 Wrapped");
+  });
+
+  it("shows stat badges", () => {
+    const svg = buildWrappedCardSvg(baseData);
+
+    expect(svg).toContain("30"); // anime count
+    expect(svg).toContain("Anime");
+    expect(svg).toContain("7.5"); // avg score
+  });
+
+  it("shows top genres", () => {
+    const svg = buildWrappedCardSvg(baseData);
+
+    expect(svg).toContain("Top Genres");
+    expect(svg).toContain("Action");
+    expect(svg).toContain("Drama");
+  });
+
+  it("shows highlights", () => {
+    const svg = buildWrappedCardSvg(baseData);
+
+    expect(svg).toContain("Highest Rated");
+    expect(svg).toContain("Most Controversial");
+    expect(svg).toContain("Steins;Gate");
+  });
+
+  it("shows consumption stats", () => {
+    const svg = buildWrappedCardSvg(baseData);
+
+    expect(svg).toContain("Consumption");
+    expect(svg).toContain("360");
+    expect(svg).toContain("500");
+  });
+
+  it("handles no controversial pick", () => {
+    const data = {
+      ...baseData,
+      stats: { ...baseData.stats, controversial: null },
+    };
+    const svg = buildWrappedCardSvg(data);
+
+    expect(svg).toContain("No controversial picks");
+  });
+});
+
+describe("buildSeasonalRecapCardSvg", () => {
+  const baseData: SeasonalRecapData = {
+    username: "TestUser",
+    season: "FALL",
+    year: 2025,
+    avatarB64: null,
+    picked: 12,
+    finished: 8,
+    dropped: 2,
+    watching: 2,
+    avgScore: 7.8,
+    topPicks: [
+      { title: "Chainsaw Man", score: 9 },
+      { title: "Spy x Family", score: 8 },
+    ],
+  };
+
+  it("produces valid SVG with season label", () => {
+    const svg = buildSeasonalRecapCardSvg(baseData);
+
+    expect(svg).toContain("<svg");
+    expect(svg).toContain("</svg>");
+    expect(svg).toContain("TestUser");
+    expect(svg).toContain("Fall 2025 Recap");
+  });
+
+  it("shows stat badges", () => {
+    const svg = buildSeasonalRecapCardSvg(baseData);
+
+    expect(svg).toContain("Picked Up");
+    expect(svg).toContain("12");
+    expect(svg).toContain("Finished");
+    expect(svg).toContain("8");
+    expect(svg).toContain("Hit Rate");
+  });
+
+  it("shows top picks", () => {
+    const svg = buildSeasonalRecapCardSvg(baseData);
+
+    expect(svg).toContain("Top Picks");
+    expect(svg).toContain("Chainsaw Man");
+    expect(svg).toContain("9/10");
+  });
+
+  it("shows season average", () => {
+    const svg = buildSeasonalRecapCardSvg(baseData);
+
+    expect(svg).toContain("Season Average");
+    expect(svg).toContain("7.8");
+  });
+
+  it("handles no top picks", () => {
+    const data = { ...baseData, topPicks: [] };
+    const svg = buildSeasonalRecapCardSvg(data);
+
+    expect(svg).toContain("No scored titles");
+  });
+
+  it("handles zero entries", () => {
+    const data = {
+      ...baseData,
+      picked: 0,
+      finished: 0,
+      dropped: 0,
+      watching: 0,
+      avgScore: 0,
+    };
+    const svg = buildSeasonalRecapCardSvg(data);
+
+    expect(svg).toContain("<svg");
+    expect(svg).toContain("No data");
   });
 });
 

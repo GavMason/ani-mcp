@@ -1,12 +1,14 @@
-/** Generates shareable SVG cards for taste profiles and compatibility comparisons */
+/** Generates shareable SVG cards for taste profiles, compatibility, and year-in-review */
 
 import sharp from "sharp";
 import type { TasteProfile, WeightedItem, FormatBreakdown } from "./taste.js";
+import type { WrappedStats } from "./wrapped.js";
 
 // === Constants ===
 
 const CARD_WIDTH = 800;
 const CARD_HEIGHT = 560;
+const COMPAT_CARD_HEIGHT = 640;
 
 // Brand palette (from assets/icon.svg)
 const BRAND_BLUE = "#02A9FF";
@@ -156,18 +158,19 @@ export interface CompatCardData {
 
 /** Build an SVG compatibility comparison card */
 export function buildCompatCardSvg(data: CompatCardData): string {
+  const h = COMPAT_CARD_HEIGHT;
   const topGenres1 = data.profile1.genres.slice(0, 5);
   const topGenres2 = data.profile2.genres.slice(0, 5);
 
   const parts: string[] = [
-    svgHeader(CARD_WIDTH, CARD_HEIGHT),
-    dotGrid(CARD_WIDTH, CARD_HEIGHT),
-    background(CARD_WIDTH, CARD_HEIGHT),
+    svgHeader(CARD_WIDTH, h),
+    dotGrid(CARD_WIDTH, h),
+    background(CARD_WIDTH, h),
 
     // Decorative glows
     glowCircle(CARD_WIDTH / 2, 140, 200, GLOW_BLUE, 0.05),
-    glowCircle(60, 520, 140, "#06d6a0", 0.04),
-    glowCircle(740, 520, 140, "#ef476f", 0.04),
+    glowCircle(60, 600, 140, "#06d6a0", 0.04),
+    glowCircle(740, 600, 140, "#ef476f", 0.04),
 
     // Avatars flanking the title
     avatarCircle(110, 38, 20, data.user1, data.avatar1 ?? null, BRAND_BLUE),
@@ -215,19 +218,320 @@ export function buildCompatCardSvg(data: CompatCardData): string {
     // Divider line
     `<line x1="${CARD_WIDTH / 2}" y1="232" x2="${CARD_WIDTH / 2}" y2="395" stroke="${BAR_BG}" stroke-width="1"/>`,
 
+    // Score distributions
+    sectionLabel(`${escapeXml(data.user1)} Scores`, 40, 410),
+    ...scoreHistogram(data.profile1.scoring.distribution, 40, 426, 340, 44),
+
+    sectionLabel(`${escapeXml(data.user2)} Scores`, 430, 410),
+    ...scoreHistogram(data.profile2.scoring.distribution, 430, 426, 340, 44),
+
     // Shared favorites
-    sectionLabel("Shared Favorites", 40, 420),
+    sectionLabel("Shared Favorites", 40, 500),
     ...sharedFavoritesList(
       data.sharedFavorites.slice(0, 3),
       40,
-      440,
+      518,
       data.user1,
       data.user2,
     ),
 
     // Divergences
-    sectionLabel("Key Differences", 430, 420),
-    ...divergenceList(data.divergences.slice(0, 3), 430, 442, data.user1),
+    sectionLabel("Key Differences", 430, 500),
+    ...divergenceList(data.divergences.slice(0, 3), 430, 520, data.user1),
+
+    // Watermark
+    watermark(CARD_WIDTH, h),
+
+    svgFooter(),
+  ];
+
+  return parts.join("\n");
+}
+
+// === Year Wrapped Card ===
+
+export interface WrappedCardData {
+  username: string;
+  avatarB64: string | null;
+  stats: WrappedStats;
+}
+
+/** Build an SVG year-in-review card */
+export function buildWrappedCardSvg(data: WrappedCardData): string {
+  const { stats } = data;
+  const h = COMPAT_CARD_HEIGHT;
+
+  // Stat badges
+  const badgeStats: Array<{ label: string; value: string }> = [];
+  if (stats.animeCount > 0)
+    badgeStats.push({ label: "Anime", value: String(stats.animeCount) });
+  if (stats.mangaCount > 0)
+    badgeStats.push({ label: "Manga", value: String(stats.mangaCount) });
+  if (stats.scoredCount > 0)
+    badgeStats.push({ label: "Avg Score", value: stats.avgScore.toFixed(1) });
+  if (stats.totalEpisodes > 0)
+    badgeStats.push({
+      label: "Episodes",
+      value: stats.totalEpisodes.toLocaleString(),
+    });
+  if (stats.totalChapters > 0)
+    badgeStats.push({
+      label: "Chapters",
+      value: stats.totalChapters.toLocaleString(),
+    });
+  // Pad to 4 if fewer
+  while (badgeStats.length < 4) badgeStats.push({ label: "", value: "" });
+
+  const parts: string[] = [
+    svgHeader(CARD_WIDTH, h),
+    dotGrid(CARD_WIDTH, h),
+    background(CARD_WIDTH, h),
+
+    // Decorative glows
+    glowCircle(680, 60, 120, GLOW_BLUE, 0.06),
+    glowCircle(100, 580, 160, GLOW_BLUE, 0.04),
+
+    // Avatar + header
+    avatarCircle(42, 38, 18, data.username, data.avatarB64, BRAND_BLUE),
+    text(data.username, 70, 34, 22, TEXT_PRIMARY, "700"),
+    text(`${stats.year} Wrapped`, 70, 50, 10, TEXT_DIM, "500"),
+    `<rect x="40" y="62" width="${CARD_WIDTH - 80}" height="1" fill="${BRAND_BLUE}" opacity="0.15"/>`,
+
+    // Stats row
+    ...statRow(40, 74, badgeStats.slice(0, 4)),
+
+    // Top genres (left)
+    sectionLabel("Top Genres", 40, 162),
+    ...wrappedGenreBars(stats.topGenres, 40, 180, 340),
+
+    // Highlights (right)
+    sectionLabel("Highlights", 430, 162),
+    ...wrappedHighlights(stats, 430, 184),
+
+    // Score distribution (bottom left)
+    sectionLabel("Scores", 40, 420),
+    ...scoreHistogram(stats.scoreDistribution, 40, 438, 340, 52),
+
+    // Consumption breakdown (bottom right)
+    ...wrappedConsumption(stats, 430, 420),
+
+    // Watermark
+    watermark(CARD_WIDTH, h),
+
+    svgFooter(),
+  ];
+
+  return parts.join("\n");
+}
+
+// Genre bars for wrapped card (simpler than taste card - count-based)
+function wrappedGenreBars(
+  genres: Array<{ name: string; count: number }>,
+  x: number,
+  y: number,
+  maxWidth: number,
+): string[] {
+  if (genres.length === 0) return [];
+  const maxCount = genres[0].count;
+  const barHeight = 22;
+  const gap = 4;
+
+  return genres.map((g, i) => {
+    const cy = y + i * (barHeight + gap);
+    const ratio = maxCount > 0 ? g.count / maxCount : 0;
+    const barWidth = ratio * (maxWidth - 70);
+    const color = PALETTE[i % PALETTE.length];
+    return [
+      `<rect x="${x}" y="${cy}" width="${maxWidth}" height="${barHeight}" rx="6" fill="${BAR_BG}" opacity="0.5"/>`,
+      `<rect x="${x}" y="${cy}" width="${Math.max(barWidth, 6)}" height="${barHeight}" rx="6" fill="${color}" opacity="0.75"/>`,
+      text(g.name, x + 8, cy + 15, 11, TEXT_PRIMARY, "600"),
+      text(
+        String(g.count),
+        x + maxWidth - 6,
+        cy + 15,
+        10,
+        TEXT_DIM,
+        "normal",
+        "end",
+      ),
+    ].join("\n");
+  });
+}
+
+// Highlight tiles for top rated and controversial
+function wrappedHighlights(stats: WrappedStats, x: number, y: number): string[] {
+  const lines: string[] = [];
+  const w = 330;
+
+  if (stats.topRated) {
+    const title =
+      stats.topRated.title.length > 30
+        ? stats.topRated.title.slice(0, 28) + "..."
+        : stats.topRated.title;
+    lines.push(
+      `<rect x="${x}" y="${y}" width="${w}" height="44" rx="8" fill="${BAR_BG}" opacity="0.5"/>`,
+    );
+    lines.push(text("Highest Rated", x + 12, y + 16, 9, TEXT_DIM, "600"));
+    lines.push(text(title, x + 12, y + 34, 13, TEXT_PRIMARY, "600"));
+    lines.push(
+      text(
+        `${stats.topRated.score}/10`,
+        x + w - 12,
+        y + 30,
+        16,
+        BRAND_BLUE,
+        "700",
+        "end",
+      ),
+    );
+  }
+
+  const cy = y + 56;
+  if (stats.controversial) {
+    const title =
+      stats.controversial.title.length > 30
+        ? stats.controversial.title.slice(0, 28) + "..."
+        : stats.controversial.title;
+    const color = stats.controversial.direction === "above" ? "#06d6a0" : "#ef476f";
+    lines.push(
+      `<rect x="${x}" y="${cy}" width="${w}" height="44" rx="8" fill="${BAR_BG}" opacity="0.5"/>`,
+    );
+    lines.push(text("Most Controversial", x + 12, cy + 16, 9, TEXT_DIM, "600"));
+    lines.push(text(title, x + 12, cy + 34, 13, TEXT_PRIMARY, "600"));
+    lines.push(
+      text(
+        `${(stats.controversial.gap / 10).toFixed(1)} pts ${stats.controversial.direction}`,
+        x + w - 12,
+        cy + 30,
+        11,
+        color,
+        "600",
+        "end",
+      ),
+    );
+  } else {
+    lines.push(
+      `<rect x="${x}" y="${cy}" width="${w}" height="44" rx="8" fill="${BAR_BG}" opacity="0.3"/>`,
+    );
+    lines.push(
+      text("No controversial picks", x + 12, cy + 28, 12, TEXT_DIM),
+    );
+  }
+
+  return lines;
+}
+
+// Consumption stats (episodes/chapters) for bottom right
+function wrappedConsumption(stats: WrappedStats, x: number, y: number): string[] {
+  const lines: string[] = [];
+  const items: Array<{ label: string; value: string; icon: string }> = [];
+
+  if (stats.totalEpisodes > 0) {
+    items.push({
+      label: "Episodes Watched",
+      value: stats.totalEpisodes.toLocaleString(),
+      icon: BRAND_BLUE,
+    });
+  }
+  if (stats.totalChapters > 0) {
+    items.push({
+      label: "Chapters Read",
+      value: stats.totalChapters.toLocaleString(),
+      icon: "#06d6a0",
+    });
+  }
+
+  if (items.length === 0) return lines;
+
+  lines.push(sectionLabel("Consumption", x, y));
+  for (let i = 0; i < items.length; i++) {
+    const cy = y + 18 + i * 38;
+    lines.push(
+      `<rect x="${x}" y="${cy}" width="330" height="32" rx="8" fill="${BAR_BG}" opacity="0.5"/>`,
+    );
+    lines.push(
+      `<circle cx="${x + 16}" cy="${cy + 16}" r="5" fill="${items[i].icon}" opacity="0.8"/>`,
+    );
+    lines.push(text(items[i].label, x + 28, cy + 20, 12, TEXT_SECONDARY));
+    lines.push(
+      text(items[i].value, x + 318, cy + 20, 14, TEXT_PRIMARY, "700", "end"),
+    );
+  }
+
+  return lines;
+}
+
+// === Seasonal Recap Card ===
+
+export interface SeasonalRecapData {
+  username: string;
+  season: string;
+  year: number;
+  avatarB64: string | null;
+  picked: number;
+  finished: number;
+  dropped: number;
+  watching: number;
+  avgScore: number;
+  topPicks: Array<{ title: string; score: number }>;
+}
+
+/** Build an SVG seasonal recap card */
+export function buildSeasonalRecapCardSvg(data: SeasonalRecapData): string {
+  const hitRate =
+    data.finished + data.dropped > 0
+      ? Math.round((data.finished / (data.finished + data.dropped)) * 100)
+      : 0;
+
+  const seasonLabel = `${capitalize(data.season.toLowerCase())} ${data.year}`;
+
+  const parts: string[] = [
+    svgHeader(CARD_WIDTH, CARD_HEIGHT),
+    dotGrid(CARD_WIDTH, CARD_HEIGHT),
+    background(CARD_WIDTH, CARD_HEIGHT),
+
+    // Decorative glows
+    glowCircle(680, 60, 120, GLOW_BLUE, 0.06),
+    glowCircle(100, 480, 160, "#06d6a0", 0.04),
+
+    // Avatar + header
+    avatarCircle(42, 38, 18, data.username, data.avatarB64, BRAND_BLUE),
+    text(data.username, 70, 34, 22, TEXT_PRIMARY, "700"),
+    text(`${seasonLabel} Recap`, 70, 50, 10, TEXT_DIM, "500"),
+    `<rect x="40" y="62" width="${CARD_WIDTH - 80}" height="1" fill="${BRAND_BLUE}" opacity="0.15"/>`,
+
+    // Stats row
+    ...statRow(40, 74, [
+      { label: "Picked Up", value: String(data.picked) },
+      { label: "Finished", value: String(data.finished) },
+      { label: "Dropped", value: String(data.dropped) },
+      { label: "Hit Rate", value: `${hitRate}%` },
+    ]),
+
+    // Status ring (left)
+    sectionLabel("Breakdown", 40, 162),
+    statusRing(200, 290, data),
+
+    // Top picks (right)
+    sectionLabel("Top Picks", 430, 162),
+    ...topPicksList(data.topPicks.slice(0, 6), 430, 182),
+
+    // Average score (bottom left)
+    ...(data.avgScore > 0
+      ? [
+          sectionLabel("Season Average", 40, 430),
+          text(
+            data.avgScore.toFixed(1),
+            120,
+            480,
+            36,
+            BRAND_BLUE,
+            "800",
+            "middle",
+          ),
+          text("/10", 155, 480, 14, TEXT_DIM, "normal"),
+        ]
+      : []),
 
     // Watermark
     watermark(CARD_WIDTH, CARD_HEIGHT),
@@ -236,6 +540,91 @@ export function buildCompatCardSvg(data: CompatCardData): string {
   ];
 
   return parts.join("\n");
+}
+
+// Donut chart showing finished/dropped/watching split
+function statusRing(
+  cx: number,
+  cy: number,
+  data: SeasonalRecapData,
+): string {
+  const r = 80;
+  const strokeW = 20;
+  const circumference = 2 * Math.PI * r;
+  const total = data.finished + data.dropped + data.watching;
+  if (total === 0)
+    return text("No data", cx, cy, 14, TEXT_DIM, "normal", "middle");
+
+  const lines: string[] = [];
+
+  // Track background
+  lines.push(
+    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${BAR_BG}" stroke-width="${strokeW}"/>`,
+  );
+
+  const segments = [
+    { count: data.finished, color: "#06d6a0", label: "Finished" },
+    { count: data.watching, color: BRAND_BLUE, label: "Watching" },
+    { count: data.dropped, color: "#ef476f", label: "Dropped" },
+  ].filter((s) => s.count > 0);
+
+  let offset = 0;
+  for (const seg of segments) {
+    const len = (seg.count / total) * circumference;
+    lines.push(
+      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${strokeW}" ` +
+        `stroke-dasharray="${len} ${circumference - len}" stroke-dashoffset="${-offset}" ` +
+        `transform="rotate(-90 ${cx} ${cy})"/>`,
+    );
+    offset += len;
+  }
+
+  // Center label
+  lines.push(text(String(total), cx, cy + 6, 28, TEXT_PRIMARY, "800", "middle"));
+  lines.push(text("titles", cx, cy + 22, 10, TEXT_SECONDARY, "normal", "middle"));
+
+  // Legend
+  const legendY = cy + r + 30;
+  for (let i = 0; i < segments.length; i++) {
+    const lx = cx - 60 + i * 55;
+    lines.push(
+      `<rect x="${lx}" y="${legendY}" width="8" height="8" rx="2" fill="${segments[i].color}"/>`,
+    );
+    lines.push(
+      text(
+        `${segments[i].label} ${segments[i].count}`,
+        lx + 12,
+        legendY + 8,
+        9,
+        TEXT_SECONDARY,
+      ),
+    );
+  }
+
+  return lines.join("\n");
+}
+
+// Ranked list of top picks with scores
+function topPicksList(
+  picks: Array<{ title: string; score: number }>,
+  x: number,
+  y: number,
+): string[] {
+  if (picks.length === 0) {
+    return [text("No scored titles", x, y + 7, 11, TEXT_DIM)];
+  }
+  return picks.map((p, i) => {
+    const cy = y + i * 30;
+    const title =
+      p.title.length > 28 ? p.title.slice(0, 26) + "..." : p.title;
+    const color = PALETTE[i % PALETTE.length];
+    return [
+      `<rect x="${x}" y="${cy}" width="330" height="26" rx="6" fill="${BAR_BG}" opacity="0.4"/>`,
+      text(`${i + 1}.`, x + 8, cy + 17, 11, TEXT_DIM, "600"),
+      text(title, x + 26, cy + 17, 12, TEXT_PRIMARY, "600"),
+      text(`${p.score}/10`, x + 318, cy + 17, 11, color, "600", "end"),
+    ].join("\n");
+  });
 }
 
 // === SVG to PNG ===

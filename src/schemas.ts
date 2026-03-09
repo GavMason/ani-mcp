@@ -1247,3 +1247,72 @@ export const CompatCardInputSchema = z.object({
 });
 
 export type CompatCardInput = z.infer<typeof CompatCardInputSchema>;
+
+/** Input for generating a year-in-review card image */
+export const WrappedCardInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  year: z
+    .number()
+    .int()
+    .min(2000)
+    .max(2100)
+    .optional()
+    .describe("Year to review (defaults to current year)"),
+  type: z
+    .enum(["ANIME", "MANGA", "BOTH"])
+    .default("BOTH")
+    .describe("Summarize anime, manga, or both"),
+});
+
+export type WrappedCardInput = z.infer<typeof WrappedCardInputSchema>;
+
+/** Input for generating a seasonal recap card image */
+export const SeasonalRecapCardInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  season: z
+    .enum(["WINTER", "SPRING", "SUMMER", "FALL"])
+    .optional()
+    .describe("Season to recap (defaults to current or most recent season)"),
+  year: z
+    .number()
+    .int()
+    .min(2000)
+    .max(2100)
+    .optional()
+    .describe("Year of the season (defaults to current year)"),
+});
+
+export type SeasonalRecapCardInput = z.infer<
+  typeof SeasonalRecapCardInputSchema
+>;
+
+/** Input for exporting a user's list as CSV or JSON */
+export const ListExportInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Export anime or manga list"),
+  status: z
+    .enum(["CURRENT", "COMPLETED", "PLANNING", "DROPPED", "PAUSED"])
+    .optional()
+    .describe("Filter by status (omit for all statuses)"),
+  format: z
+    .enum(["csv", "json"])
+    .default("csv")
+    .describe("Export format"),
+});
+
+export type ListExportInput = z.infer<typeof ListExportInputSchema>;

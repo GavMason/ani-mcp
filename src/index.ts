@@ -42,7 +42,7 @@ if (!process.env.ANILIST_TOKEN) {
 
 const server = new FastMCP({
   name: "ani-mcp",
-  version: "0.14.3",
+  version: "0.15.0",
   instructions:
     "ani-mcp is a local MCP server for AniList. " +
     "Read-only tools work without authentication. " +

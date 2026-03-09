@@ -167,3 +167,87 @@ describe("anilist_compat_card", () => {
     expect(result).toContain("no completed");
   });
 });
+
+// === Wrapped Card ===
+
+function completedByDateHandler(entries: ReturnType<typeof makeEntry>[]) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!body.query?.includes("CompletedByDate")) return undefined;
+
+    return HttpResponse.json({
+      data: {
+        Page: {
+          pageInfo: { hasNextPage: false },
+          mediaList: entries,
+        },
+      },
+    });
+  });
+}
+
+describe("anilist_wrapped_card", () => {
+  it("returns a PNG image", { timeout: SHARP_TIMEOUT }, async () => {
+    mswServer.use(completedByDateHandler(makeScoredEntries(10)));
+
+    const content = await callToolRaw("anilist_wrapped_card", {
+      username: "testuser",
+      year: 2025,
+      type: "ANIME",
+    });
+
+    const img = content.find((c) => c.type === "image");
+    expect(img).toBeDefined();
+    expect(img?.mimeType).toBe("image/png");
+  });
+
+  it("returns text for empty year", async () => {
+    mswServer.use(completedByDateHandler([]));
+
+    const result = await callTool("anilist_wrapped_card", {
+      username: "emptyuser",
+      year: 2025,
+    });
+
+    expect(result).toContain("didn't complete any titles");
+  });
+});
+
+// === Seasonal Recap Card ===
+
+describe("anilist_seasonal_recap_card", () => {
+  it("returns a PNG image", { timeout: SHARP_TIMEOUT }, async () => {
+    const entries = makeScoredEntries(6).map((e) => ({
+      ...e,
+      media: { ...e.media, season: "FALL", seasonYear: 2025 },
+    }));
+    mswServer.use(listHandler(entries));
+
+    const content = await callToolRaw("anilist_seasonal_recap_card", {
+      username: "testuser",
+      season: "FALL",
+      year: 2025,
+    });
+
+    const img = content.find((c) => c.type === "image");
+    expect(img).toBeDefined();
+    expect(img?.mimeType).toBe("image/png");
+  });
+
+  it("returns text when no seasonal entries", async () => {
+    // Entries with different season
+    const entries = makeScoredEntries(3).map((e) => ({
+      ...e,
+      media: { ...e.media, season: "SPRING", seasonYear: 2024 },
+    }));
+    mswServer.use(listHandler(entries));
+
+    const result = await callTool("anilist_seasonal_recap_card", {
+      username: "testuser",
+      season: "FALL",
+      year: 2025,
+    });
+
+    expect(result).toContain("no entries from FALL 2025");
+  });
+});

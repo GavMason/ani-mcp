@@ -465,3 +465,64 @@ describe("anilist_lookup", () => {
     expect(result).toContain("Status:");
   });
 });
+
+// === Export Tool ===
+
+describe("anilist_export", () => {
+  it("returns CSV with header row", async () => {
+    mswServer.use(listHandler([makeEntry({ id: 1 })]));
+
+    const result = await callTool("anilist_export", {
+      username: "testuser",
+      type: "ANIME",
+      format: "csv",
+    });
+
+    expect(result).toContain("title,type,format,status,score,progress");
+    const lines = result.split("\n");
+    expect(lines.length).toBe(2); // header + 1 row
+  });
+
+  it("returns valid JSON array", async () => {
+    mswServer.use(listHandler([makeEntry({ id: 1 }), makeEntry({ id: 2 })]));
+
+    const result = await callTool("anilist_export", {
+      username: "testuser",
+      type: "ANIME",
+      format: "json",
+    });
+
+    const parsed = JSON.parse(result);
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0]).toHaveProperty("title");
+    expect(parsed[0]).toHaveProperty("status");
+    expect(parsed[0]).toHaveProperty("anilist_id");
+  });
+
+  it("returns message for empty list", async () => {
+    mswServer.use(listHandler([]));
+
+    const result = await callTool("anilist_export", {
+      username: "emptyuser",
+      type: "ANIME",
+    });
+
+    expect(result).toContain("no anime entries");
+  });
+
+  it("escapes commas in CSV titles", async () => {
+    const entry = makeEntry({ id: 1 });
+    entry.media.title.english = "Title, With Comma";
+    mswServer.use(listHandler([entry]));
+
+    const result = await callTool("anilist_export", {
+      username: "testuser",
+      type: "ANIME",
+      format: "csv",
+    });
+
+    // Comma in title should be wrapped in quotes
+    expect(result).toContain('"Title, With Comma"');
+  });
+});

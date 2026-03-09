@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.3",
   "name": "ani-mcp",
-  "version": "0.14.3",
+  "version": "0.15.0",
   "display_name": "AniList MCP",
   "description": "A smart MCP server for AniList that gets your anime/manga taste - not just API calls.",
   "author": {
@@ -203,6 +203,15 @@
     },
     {
       "name": "anilist_react"
+    },
+    {
+      "name": "anilist_wrapped_card"
+    },
+    {
+      "name": "anilist_seasonal_recap_card"
+    },
+    {
+      "name": "anilist_export"
     }
   ]
 }
