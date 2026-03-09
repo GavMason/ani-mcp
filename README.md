@@ -4,11 +4,11 @@
 
 # ani-mcp
 
-[![npm version](https://img.shields.io/npm/v/ani-mcp)](https://www.npmjs.com/package/ani-mcp)
+[![npm version](https://img.shields.io/npm/v/ani-mcp?color=blue)](https://www.npmjs.com/package/ani-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/ani-mcp)](https://www.npmjs.com/package/ani-mcp)
 [![CI](https://github.com/gavxm/ani-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/gavxm/ani-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Node](https://img.shields.io/node/v/ani-mcp)](https://nodejs.org)
+[![MCP Bundle](https://img.shields.io/badge/Claude_Desktop-.mcpb-blueviolet)](https://github.com/gavxm/ani-mcp/releases/latest)
 
 A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anilist.co) that understands your anime and manga taste - not just raw API calls.
 
@@ -28,7 +28,11 @@ Plus the essentials: search, details, trending, seasonal browsing, list manageme
 
 ## Try it in 30 seconds
 
-No account needed. Paste this into your MCP client config and start asking about anime:
+No account needed. Works with any MCP-compatible client.
+
+### Claude Desktop
+
+Add to your config file (`Settings > Developer > Edit Config` or `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
 ```json
 {
@@ -41,9 +45,19 @@ No account needed. Paste this into your MCP client config and start asking about
 }
 ```
 
-This gives you search, trending, seasonal browsing, staff lookup, and more - no env vars required.
+Restart Claude Desktop after saving.
 
-To unlock personalized features (recommendations, taste profiling, list management), add your username:
+Alternatively, download `ani-mcp.mcpb` from the [latest release](https://github.com/gavxm/ani-mcp/releases/latest) and install via `Settings > Extensions`.
+
+### Claude Code
+
+```sh
+claude mcp add ani-mcp -- npx -y ani-mcp
+```
+
+### Personalized features
+
+Add your username for recommendations, taste profiling, and list management:
 
 ```json
 {
@@ -60,8 +74,6 @@ To unlock personalized features (recommendations, taste profiling, list manageme
 ```
 
 For write operations (updating progress, scoring, list edits), also add `ANILIST_TOKEN`. See [Environment Variables](#environment-variables) for details.
-
-Works with any MCP-compatible client.
 
 ## Environment Variables
 
@@ -276,4 +288,4 @@ Bug reports and feature requests: [GitHub Issues](https://github.com/gavxm/ani-m
 
 ## License
 
-MIT
+[MIT](LICENSE)
