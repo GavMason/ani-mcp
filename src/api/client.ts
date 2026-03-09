@@ -178,10 +178,16 @@ class AniListClient {
   ): Promise<AniListMediaListEntry[]> {
     const lists = await this.fetchListGroups(username, type, status, sort);
 
-    // Flatten across status groups
+    // Flatten and deduplicate (custom lists can duplicate status group entries)
+    const seen = new Set<number>();
     const entries: AniListMediaListEntry[] = [];
     for (const list of lists) {
-      entries.push(...list.entries);
+      for (const entry of list.entries) {
+        if (!seen.has(entry.media.id)) {
+          seen.add(entry.media.id);
+          entries.push(entry);
+        }
+      }
     }
     return entries;
   }
