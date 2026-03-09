@@ -1,7 +1,7 @@
 /** API client integration tests */
 
 import { describe, it, expect } from "vitest";
-import { anilistClient, AniListApiError } from "../../src/api/client.js";
+import { anilistClient, AniListApiError, CACHE_TTLS, warmCache } from "../../src/api/client.js";
 import { mswServer } from "../helpers/msw.js";
 import { errorHandler, graphqlErrorHandler, timeoutHandler } from "../helpers/handlers.js";
 
@@ -186,5 +186,15 @@ describe("anilistClient.query", () => {
     // Equal values but distinct references
     expect(result1).toEqual(result2);
     expect(result1).not.toBe(result2);
+  });
+
+  it("exports CACHE_TTLS with positive values", () => {
+    expect(CACHE_TTLS.media).toBeGreaterThan(0);
+    expect(CACHE_TTLS.list).toBeGreaterThan(0);
+    expect(CACHE_TTLS.search).toBeGreaterThan(0);
+  });
+
+  it("exports warmCache as a function", () => {
+    expect(typeof warmCache).toBe("function");
   });
 });

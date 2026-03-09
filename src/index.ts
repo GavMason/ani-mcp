@@ -3,6 +3,7 @@
 
 import "dotenv/config";
 import { FastMCP } from "fastmcp";
+import { warmCache } from "./api/client.js";
 import { registerSearchTools } from "./tools/search.js";
 import { registerListTools } from "./tools/lists.js";
 import { registerRecommendTools } from "./tools/recommend.js";
@@ -28,7 +29,7 @@ if (!process.env.ANILIST_TOKEN) {
 
 const server = new FastMCP({
   name: "ani-mcp",
-  version: "0.13.0",
+  version: "0.14.0",
 });
 
 registerSearchTools(server);
@@ -43,6 +44,9 @@ registerImportTools(server);
 registerCardTools(server);
 registerResources(server);
 registerPrompts(server);
+
+// Pre-fetch default user's lists
+warmCache();
 
 // === Transport ===
 const transport = process.env.MCP_TRANSPORT === "http" ? "httpStream" : "stdio";

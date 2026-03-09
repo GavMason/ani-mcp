@@ -1012,10 +1012,13 @@ export function registerRecommendTools(server: FastMCP): void {
           }
         }
 
-        // Episode/chapter count
-        const totalEps = anime.reduce((sum, e) => sum + (e.progress ?? 0), 0);
+        // Episode/chapter count (prefer media total for completed entries)
+        const totalEps = anime.reduce(
+          (sum, e) => sum + (e.media.episodes ?? e.progress ?? 0),
+          0,
+        );
         const totalChapters = manga.reduce(
-          (sum, e) => sum + (e.progress ?? 0),
+          (sum, e) => sum + (e.media.chapters ?? e.progress ?? 0),
           0,
         );
 

@@ -233,6 +233,42 @@ export function registerPrompts(server: FastMCP): void {
     },
   });
 
+  // === OAuth Token Guide ===
+
+  server.addPrompt({
+    name: "get_token",
+    description:
+      "Step-by-step guide to create an AniList API token for write features (rate, update progress, etc.).",
+    arguments: [],
+    async load() {
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: {
+              type: "text" as const,
+              text:
+                "Walk me through getting an AniList OAuth token for ani-mcp write features. " +
+                "Here are the exact steps:\n" +
+                "1. Go to https://anilist.co/settings/developer\n" +
+                "2. Click 'Create New Client'\n" +
+                "3. Set the app name to anything (e.g. 'ani-mcp')\n" +
+                "4. Set the redirect URL to https://anilist.co/api/v2/oauth/pin\n" +
+                "5. Save and copy your Client ID\n" +
+                "6. Open this URL in a browser (replace CLIENT_ID with your actual ID):\n" +
+                "   https://anilist.co/api/v2/oauth/authorize?client_id=CLIENT_ID&response_type=token\n" +
+                "7. Click 'Authorize' on the AniList page\n" +
+                "8. Copy the token from the page\n" +
+                "9. Add ANILIST_TOKEN to your MCP server config with that token value\n" +
+                "10. Restart your MCP client\n\n" +
+                "After they complete the steps, verify with anilist_whoami to confirm the token works.",
+            },
+          },
+        ],
+      };
+    },
+  });
+
   // === Find Similar ===
 
   server.addPrompt({

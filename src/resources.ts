@@ -131,7 +131,7 @@ export function registerResources(server: FastMCP): void {
       const lines: string[] = ["# ani-mcp Status", ""];
 
       // Server version
-      lines.push(`Version: 0.13.0`);
+      lines.push(`Version: 0.14.0`);
 
       // Auth status
       const hasToken = Boolean(process.env.ANILIST_TOKEN);

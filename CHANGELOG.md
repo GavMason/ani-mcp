@@ -2,6 +2,14 @@
 
 All notable changes to ani-mcp are documented here.
 
+## 0.14.0
+
+- Add offline/degraded mode - serve stale cached data when AniList API is unreachable
+- Add cache warming - pre-fetch default user's lists on startup for instant first calls
+- Add configurable cache TTL via `ANILIST_CACHE_TTL` env var (multiplier, e.g. `2` doubles all TTLs)
+- Add `get_token` prompt - step-by-step OAuth token creation guide
+- Fix `anilist_wrapped` episode/chapter counts to use media totals instead of progress
+
 ## 0.13.0
 
 - Add `anilist://status` resource - health check with API connectivity, auth status, and cache state

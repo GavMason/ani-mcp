@@ -477,7 +477,7 @@ describe("anilist_wrapped", () => {
     expect(result).not.toContain("episodes watched");
   });
 
-  it("counts episodes from progress, not media.episodes", async () => {
+  it("counts episodes from media total, falling back to progress", async () => {
     const entries = wrappedEntries().map((e) => ({
       ...e,
       progress: 24,
@@ -491,8 +491,8 @@ describe("anilist_wrapped", () => {
       year: currentYear,
     });
 
-    // 6 entries * 24 progress = 144 episodes
-    expect(result).toContain("144 episodes watched");
+    // 6 entries * 12 media.episodes = 72 (prefers media total over progress)
+    expect(result).toContain("72 episodes watched");
   });
 });
 

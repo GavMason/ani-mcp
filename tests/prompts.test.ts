@@ -133,3 +133,15 @@ describe("setup", () => {
     expect(result).toContain("ANILIST_TOKEN");
   });
 });
+
+// === get_token ===
+
+describe("get_token", () => {
+  it("returns OAuth flow steps with redirect URL and anilist_whoami", async () => {
+    const result = await getPrompt("get_token");
+    expect(result).toContain("anilist.co/settings/developer");
+    expect(result).toContain("oauth/pin");
+    expect(result).toContain("client_id=CLIENT_ID");
+    expect(result).toContain("anilist_whoami");
+  });
+});

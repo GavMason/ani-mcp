@@ -37,16 +37,19 @@ function log(event: string, detail?: string): void {
   console.error(msg);
 }
 
+// TTL multiplier (e.g. "2" doubles all TTLs, "0.5" halves them)
+const TTL_SCALE = Math.max(0.1, Number(process.env.ANILIST_CACHE_TTL) || 1);
+
 /** Per-category TTLs for the query cache */
 export const CACHE_TTLS = {
-  media: 60 * 60 * 1000, // 1h
-  search: 2 * 60 * 1000, // 2m
-  list: 5 * 60 * 1000, // 5m
-  seasonal: 30 * 60 * 1000, // 30m
-  stats: 10 * 60 * 1000, // 10m
-  trending: 30 * 60 * 1000, // 30m
-  schedule: 30 * 60 * 1000, // 30m
-} as const;
+  media: 60 * 60 * 1000 * TTL_SCALE, // 1h base
+  search: 2 * 60 * 1000 * TTL_SCALE, // 2m base
+  list: 5 * 60 * 1000 * TTL_SCALE, // 5m base
+  seasonal: 30 * 60 * 1000 * TTL_SCALE, // 30m base
+  stats: 10 * 60 * 1000 * TTL_SCALE, // 10m base
+  trending: 30 * 60 * 1000 * TTL_SCALE, // 30m base
+  schedule: 30 * 60 * 1000 * TTL_SCALE, // 30m base
+};
 
 export type CacheCategory = keyof typeof CACHE_TTLS;
 
@@ -61,7 +64,9 @@ const rateLimit = pThrottle({
 /** LRU cache with per-entry TTL, keyed on query + variables */
 const queryCache = new LRUCache<string, Record<string, unknown>>({
   max: 500,
-  allowStale: false,
+  // Stale entries kept for degraded-mode fallback
+  allowStale: true,
+  noDeleteOnStaleGet: true,
 });
 
 /** Stable JSON serialization with sorted keys */
@@ -117,17 +122,28 @@ class AniListClient {
     if (cacheCategory) {
       const cacheKey = `${query}::${stableStringify(variables)}`;
       const cached = queryCache.get(cacheKey);
-      if (cached !== undefined) {
+      const isFresh = cached !== undefined && queryCache.getRemainingTTL(cacheKey) > 0;
+
+      if (cached !== undefined && isFresh) {
         log("cache-hit", name);
         return cached as T;
       }
 
-      log("cache-miss", name);
-      const data = await this.executeWithRetry<T>(query, variables);
-      queryCache.set(cacheKey, data as Record<string, unknown>, {
-        ttl: CACHE_TTLS[cacheCategory],
-      });
-      return data;
+      // Attempt fetch; fall back to stale cache on failure
+      try {
+        log("cache-miss", name);
+        const data = await this.executeWithRetry<T>(query, variables);
+        queryCache.set(cacheKey, data as Record<string, unknown>, {
+          ttl: CACHE_TTLS[cacheCategory],
+        });
+        return data;
+      } catch (err) {
+        if (cached !== undefined) {
+          log("degraded", `${name} - serving stale cache`);
+          return cached as T;
+        }
+        throw err;
+      }
     }
 
     // No cache category - skip caching entirely
@@ -349,3 +365,18 @@ class AniListClient {
 
 /** Singleton. Rate limiter and cache must be shared across all tools. */
 export const anilistClient = new AniListClient();
+
+/** Pre-fetch default user's lists so first tool call is instant */
+export function warmCache(): void {
+  const username = process.env.ANILIST_USERNAME;
+  if (!username) return;
+
+  log("cache-warm", username);
+  // Fire and forget - don't block startup
+  Promise.all([
+    anilistClient.fetchList(username, "ANIME"),
+    anilistClient.fetchList(username, "MANGA"),
+  ]).catch((err) => {
+    log("cache-warm-error", err instanceof Error ? err.message : String(err));
+  });
+}
