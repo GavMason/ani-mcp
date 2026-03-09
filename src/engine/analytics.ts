@@ -14,7 +14,7 @@ export interface GenreCalibration {
 
 export interface CalibrationResult {
   overallDelta: number;
-  tendency: "generous" | "harsh" | "average";
+  tendency: "high" | "low" | "balanced";
   genreCalibrations: GenreCalibration[];
   totalScored: number;
 }
@@ -73,7 +73,7 @@ export function computeCalibration(
   if (scored.length === 0) {
     return {
       overallDelta: 0,
-      tendency: "average",
+      tendency: "balanced",
       genreCalibrations: [],
       totalScored: 0,
     };
@@ -126,10 +126,10 @@ export function computeCalibration(
 
   const tendency =
     overallDelta >= 0.5
-      ? "generous"
+      ? "high"
       : overallDelta <= -0.5
-        ? "harsh"
-        : "average";
+        ? "low"
+        : "balanced";
 
   return {
     overallDelta,

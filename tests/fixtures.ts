@@ -32,7 +32,10 @@ export function makeMedia(
     averageScore: 73,
     popularity: overrides.popularity ?? 30000,
     genres: overrides.genres ?? ["Action"],
-    tags: overrides.tags ?? [],
+    tags: (overrides.tags ?? []).map((t) => ({
+      category: "Theme",
+      ...t,
+    })),
     season: overrides.season ?? "SPRING",
     seasonYear: overrides.seasonYear ?? 2024,
     startDate: { year: 2024, month: 4, day: null },

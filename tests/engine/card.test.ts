@@ -20,12 +20,16 @@ function makeProfile(overrides: Partial<TasteProfile> = {}): TasteProfile {
       { name: "Male Protagonist", weight: 0.6, count: 20 },
       { name: "Ensemble Cast", weight: 0.5, count: 15 },
     ],
+    themes: [
+      { name: "Coming of Age", weight: 0.6, count: 18 },
+      { name: "Revenge", weight: 0.5, count: 12 },
+    ],
     scoring: {
       meanScore: 7.2,
       median: 7,
       totalScored: 100,
       distribution: { 5: 5, 6: 10, 7: 30, 8: 35, 9: 15, 10: 5 },
-      tendency: "average",
+      tendency: "balanced",
     },
     formats: [
       { format: "TV", count: 80, percent: 60 },
@@ -57,15 +61,15 @@ describe("buildTasteCardSvg", () => {
     expect(svg).toContain("TV");
   });
 
-  it("includes tags section", () => {
+  it("includes themes section", () => {
     const svg = buildTasteCardSvg("TestUser", makeProfile());
 
     expect(svg).toContain("Top Themes");
-    expect(svg).toContain("Male Protagonist");
+    expect(svg).toContain("Coming of Age");
   });
 
-  it("handles empty tags gracefully", () => {
-    const svg = buildTasteCardSvg("TestUser", makeProfile({ tags: [] }));
+  it("handles empty themes gracefully", () => {
+    const svg = buildTasteCardSvg("TestUser", makeProfile({ themes: [] }));
 
     expect(svg).toContain("<svg");
     expect(svg).toContain("Top Themes");

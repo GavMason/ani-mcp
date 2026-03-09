@@ -87,8 +87,8 @@ export function buildTasteCardSvg(
   avatarB64: string | null = null,
 ): string {
   const genres = profile.genres.slice(0, 6);
-  const tags = profile.tags.slice(0, 5);
-  const formats = profile.formats.slice(0, 4);
+  const tags = profile.themes.slice(0, 5);
+  const formats = profile.formats.slice(0, 6);
   const { scoring } = profile;
 
   const parts: string[] = [
@@ -110,7 +110,7 @@ export function buildTasteCardSvg(
     ...statRow(40, 74, [
       { label: "Completed", value: String(profile.totalCompleted) },
       { label: "Mean Score", value: scoring.meanScore.toFixed(1) },
-      { label: "Tendency", value: capitalize(scoring.tendency) },
+      { label: "Scoring", value: capitalize(scoring.tendency) },
       { label: "Median", value: String(scoring.median) },
     ]),
 
@@ -503,7 +503,7 @@ function formatBar(
 ): string[] {
   const barHeight = 16;
   const rx = 8;
-  const colors = [BRAND_BLUE, "#06d6a0", "#ffd166", "#ef476f"];
+  const colors = [BRAND_BLUE, "#06d6a0", "#ffd166", "#ef476f", "#b388ff", "#4dd0e1"];
   const lines: string[] = [];
 
   // Rounded container clip

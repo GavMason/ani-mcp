@@ -14,12 +14,13 @@ import { makeEntry } from "../fixtures.js";
 const mockProfile: TasteProfile = {
   genres: [{ name: "Action", weight: 8.5, count: 5 }],
   tags: [],
+  themes: [],
   scoring: {
     meanScore: 7.5,
     median: 8,
     totalScored: 10,
     distribution: { 7: 3, 8: 4, 9: 3 },
-    tendency: "average",
+    tendency: "balanced",
   },
   formats: [{ format: "TV", count: 8, percent: 80 }],
   totalCompleted: 10,

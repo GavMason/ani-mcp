@@ -16,7 +16,7 @@ export interface ScoringPattern {
   median: number;
   totalScored: number;
   distribution: Record<number, number>;
-  tendency: "generous" | "harsh" | "average";
+  tendency: "high" | "low" | "balanced";
 }
 
 export interface FormatBreakdown {
@@ -28,6 +28,7 @@ export interface FormatBreakdown {
 export interface TasteProfile {
   genres: WeightedItem[];
   tags: WeightedItem[];
+  themes: WeightedItem[];
   scoring: ScoringPattern;
   formats: FormatBreakdown[];
   totalCompleted: number;
@@ -46,6 +47,9 @@ const UNSCORED = 0;
 
 // Cap the number of tags returned to keep output focused
 const MAX_TAGS = 20;
+
+// Tags must appear in at least this many entries to rank
+const MIN_TAG_COUNT = 3;
 
 // Recency decay: entries from HALF_LIFE years ago get ~50% weight
 const DECAY_HALF_LIFE_YEARS = 3;
@@ -70,6 +74,7 @@ export function buildTasteProfile(
 
   const genres = computeGenreWeights(scored);
   const tags = computeTagWeights(scored);
+  const themes = computeTagWeights(scored, "Theme");
   const scoring = computeScoringPattern(scored);
   // Format breakdown uses all entries, not just scored ones
   const formats = computeFormatBreakdown(entries);
@@ -77,6 +82,7 @@ export function buildTasteProfile(
   return {
     genres,
     tags,
+    themes,
     scoring,
     formats,
     totalCompleted: entries.length,
@@ -117,11 +123,11 @@ export function describeTasteProfile(
   // Scoring tendency
   const { scoring } = profile;
   const tendencyDesc =
-    scoring.tendency === "generous"
-      ? `Scores generously (avg ${scoring.meanScore.toFixed(1)} vs site avg ${SITE_MEAN})`
-      : scoring.tendency === "harsh"
-        ? `Scores harshly (avg ${scoring.meanScore.toFixed(1)} vs site avg ${SITE_MEAN})`
-        : `Scores close to average (avg ${scoring.meanScore.toFixed(1)})`;
+    scoring.tendency === "high"
+      ? `Scores high (avg ${scoring.meanScore.toFixed(1)} vs site avg ${SITE_MEAN})`
+      : scoring.tendency === "low"
+        ? `Scores low (avg ${scoring.meanScore.toFixed(1)} vs site avg ${SITE_MEAN})`
+        : `Scores near average (avg ${scoring.meanScore.toFixed(1)})`;
   lines.push(`${tendencyDesc} across ${scoring.totalScored} rated titles.`);
 
   // Format preferences
@@ -159,7 +165,10 @@ function computeGenreWeights(entries: AniListMediaListEntry[]): WeightedItem[] {
 }
 
 /** Weight tags by user score multiplied by tag relevance */
-function computeTagWeights(entries: AniListMediaListEntry[]): WeightedItem[] {
+function computeTagWeights(
+  entries: AniListMediaListEntry[],
+  categoryFilter?: string,
+): WeightedItem[] {
   const tagMap = new Map<string, { weight: number; count: number }>();
 
   for (const entry of entries) {
@@ -167,6 +176,7 @@ function computeTagWeights(entries: AniListMediaListEntry[]): WeightedItem[] {
 
     for (const tag of entry.media.tags) {
       if (tag.isMediaSpoiler) continue;
+      if (categoryFilter && tag.category !== categoryFilter) continue;
 
       // Tag rank (0-100) indicates how relevant the tag is to this media
       const relevance = tag.rank / 100;
@@ -175,6 +185,11 @@ function computeTagWeights(entries: AniListMediaListEntry[]): WeightedItem[] {
       existing.count += 1;
       tagMap.set(tag.name, existing);
     }
+  }
+
+  // Filter out tags with too few appearances to be meaningful
+  for (const [name, { count }] of tagMap) {
+    if (count < MIN_TAG_COUNT) tagMap.delete(name);
   }
 
   return mapToSortedItems(tagMap).slice(0, MAX_TAGS);
@@ -203,10 +218,10 @@ function computeScoringPattern(
   // Classify based on distance from site average (7.0)
   const tendency: ScoringPattern["tendency"] =
     mean >= SITE_MEAN + 0.5
-      ? "generous"
+      ? "high"
       : mean <= SITE_MEAN - 0.5
-        ? "harsh"
-        : "average";
+        ? "low"
+        : "balanced";
 
   return {
     meanScore: mean,
@@ -229,13 +244,24 @@ function computeFormatBreakdown(
     counts.set(format, (counts.get(format) ?? 0) + 1);
   }
 
-  return [...counts.entries()]
-    .map(([format, count]) => ({
-      format,
-      count,
-      percent: Math.round((count / entries.length) * 100),
-    }))
-    .sort((a, b) => b.count - a.count);
+  // Largest-remainder method so percentages sum to 100
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const rawPcts = sorted.map(([, c]) => (c / entries.length) * 100);
+  const floored = rawPcts.map(Math.floor);
+  let remainder = 100 - floored.reduce((a, b) => a + b, 0);
+  const remainders = rawPcts.map((v, i) => ({ i, r: v - floored[i] }));
+  remainders.sort((a, b) => b.r - a.r);
+  for (const { i } of remainders) {
+    if (remainder <= 0) break;
+    floored[i] += 1;
+    remainder -= 1;
+  }
+
+  return sorted.map(([format, count], i) => ({
+    format,
+    count,
+    percent: floored[i],
+  }));
 }
 
 // === Helpers ===
@@ -307,12 +333,13 @@ function emptyProfile(totalCompleted: number): TasteProfile {
   return {
     genres: [],
     tags: [],
+    themes: [],
     scoring: {
       meanScore: 0,
       median: 0,
       totalScored: 0,
       distribution: {},
-      tendency: "average",
+      tendency: "balanced",
     },
     formats: [],
     totalCompleted,

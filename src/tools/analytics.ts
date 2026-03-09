@@ -73,7 +73,7 @@ export function registerAnalyticsTools(server: FastMCP): void {
         // Overall tendency
         const sign = result.overallDelta >= 0 ? "+" : "";
         lines.push(
-          `Overall: ${sign}${result.overallDelta.toFixed(2)} vs community (${result.tendency} scorer)`,
+          `Overall: ${sign}${result.overallDelta.toFixed(2)} vs community (${result.tendency} scorer vs avg)`,
         );
 
         // Per-genre breakdown

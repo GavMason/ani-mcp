@@ -12,7 +12,7 @@ describe("computeCalibration", () => {
   it("returns empty result for no entries", () => {
     const result = computeCalibration([]);
     expect(result.totalScored).toBe(0);
-    expect(result.tendency).toBe("average");
+    expect(result.tendency).toBe("balanced");
     expect(result.genreCalibrations).toEqual([]);
   });
 
@@ -35,7 +35,7 @@ describe("computeCalibration", () => {
     expect(result.totalScored).toBe(1);
   });
 
-  it("computes positive overall delta for generous scorer", () => {
+  it("computes positive overall delta for high scorer", () => {
     // User scores 9, community is 60/10=6.0 -> delta = +3.0
     const entries = Array.from({ length: 5 }, (_, i) =>
       makeEntry({
@@ -47,10 +47,10 @@ describe("computeCalibration", () => {
     );
     const result = computeCalibration(entries);
     expect(result.overallDelta).toBeCloseTo(3.0, 1);
-    expect(result.tendency).toBe("generous");
+    expect(result.tendency).toBe("high");
   });
 
-  it("computes negative overall delta for harsh scorer", () => {
+  it("computes negative overall delta for low scorer", () => {
     // User scores 5, community is 80/10=8.0 -> delta = -3.0
     const entries = Array.from({ length: 5 }, (_, i) =>
       makeEntry({
@@ -62,7 +62,7 @@ describe("computeCalibration", () => {
     );
     const result = computeCalibration(entries);
     expect(result.overallDelta).toBeCloseTo(-3.0, 1);
-    expect(result.tendency).toBe("harsh");
+    expect(result.tendency).toBe("low");
   });
 
   it("classifies average tendency for small delta", () => {
@@ -76,7 +76,7 @@ describe("computeCalibration", () => {
       }),
     );
     const result = computeCalibration(entries);
-    expect(result.tendency).toBe("average");
+    expect(result.tendency).toBe("balanced");
   });
 
   it("requires min 3 entries per genre for calibration", () => {

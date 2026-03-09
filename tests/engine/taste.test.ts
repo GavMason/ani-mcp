@@ -89,23 +89,23 @@ describe("buildTasteProfile", () => {
     expect(tt.weight).toBeGreaterThan(mp.weight);
   });
 
-  it("classifies generous scorers (mean >= 7.5)", () => {
+  it("classifies high scorers (mean >= 7.5)", () => {
     const entries = Array.from({ length: 5 }, (_, i) =>
       makeEntry({ score: 9, id: i + 1 }),
     );
     const profile = buildTasteProfile(entries);
 
-    expect(profile.scoring.tendency).toBe("generous");
+    expect(profile.scoring.tendency).toBe("high");
     expect(profile.scoring.meanScore).toBe(9);
   });
 
-  it("classifies harsh scorers (mean <= 6.5)", () => {
+  it("classifies low scorers (mean <= 6.5)", () => {
     const entries = Array.from({ length: 5 }, (_, i) =>
       makeEntry({ score: 5, id: i + 1 }),
     );
     const profile = buildTasteProfile(entries);
 
-    expect(profile.scoring.tendency).toBe("harsh");
+    expect(profile.scoring.tendency).toBe("low");
   });
 
   it("classifies average scorers", () => {
@@ -114,7 +114,7 @@ describe("buildTasteProfile", () => {
     );
     const profile = buildTasteProfile(entries);
 
-    expect(profile.scoring.tendency).toBe("average");
+    expect(profile.scoring.tendency).toBe("balanced");
   });
 
   it("uses UNKNOWN for null format in breakdown", () => {
@@ -241,14 +241,14 @@ describe("describeTasteProfile", () => {
     expect(desc).toContain("not enough have scores");
   });
 
-  it("describes harsh scoring tendency", () => {
+  it("describes low scoring tendency", () => {
     const entries = Array.from({ length: 6 }, (_, i) =>
       makeEntry({ score: 5, id: i + 1, genres: ["Action"] }),
     );
     const profile = buildTasteProfile(entries);
     const desc = describeTasteProfile(profile, "harshuser");
 
-    expect(desc).toContain("harshly");
+    expect(desc).toContain("low");
   });
 
   it("describes average scoring tendency", () => {
@@ -258,7 +258,7 @@ describe("describeTasteProfile", () => {
     const profile = buildTasteProfile(entries);
     const desc = describeTasteProfile(profile, "avguser");
 
-    expect(desc).toContain("close to average");
+    expect(desc).toContain("near average");
   });
 
   it("includes genres, themes, scoring tendency, and total", () => {
@@ -275,7 +275,7 @@ describe("describeTasteProfile", () => {
 
     expect(desc).toContain("Action");
     expect(desc).toContain("Time Travel");
-    expect(desc).toContain("generous");
+    expect(desc).toContain("high");
     expect(desc).toContain("Total completed: 6");
   });
 });

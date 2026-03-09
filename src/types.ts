@@ -11,6 +11,7 @@ export interface AniListDate {
 export interface AniListTag {
   name: string;
   rank: number;
+  category: string;
   isMediaSpoiler: boolean;
 }
 

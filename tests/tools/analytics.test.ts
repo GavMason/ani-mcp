@@ -38,7 +38,7 @@ describe("anilist_calibration", () => {
 
     const result = await callTool("anilist_calibration", { type: "ANIME" });
     expect(result).toContain("Score Calibration");
-    expect(result).toContain("generous");
+    expect(result).toContain("high");
     expect(result).toContain("Action");
   });
 

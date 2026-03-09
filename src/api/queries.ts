@@ -28,6 +28,7 @@ const MEDIA_FRAGMENT = `
     tags {
       name
       rank
+      category
       isMediaSpoiler
     }
     season
