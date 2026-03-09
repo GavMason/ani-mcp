@@ -581,14 +581,24 @@ export function registerAnalyticsTools(server: FastMCP): void {
 
           if (weeksSinceStart >= 1 && entry.progress > 0) {
             const perWeek = entry.progress / weeksSinceStart;
-            rateLine = `${perWeek.toFixed(1)} ${unit}/week`;
 
-            if (remaining > 0 && perWeek > 0) {
-              const weeksLeft = remaining / perWeek;
-              const finishEpoch = now + weeksLeft * 7 * 24 * 3600;
-              const finishDate = new Date(finishEpoch * 1000);
-              const dateStr = finishDate.toISOString().split("T")[0];
-              estimateLine = `~${Math.ceil(weeksLeft)} weeks (est. ${dateStr})`;
+            // Stalled if less than 0.1 ep/week over 4+ weeks
+            if (perWeek < 0.1 && weeksSinceStart >= 4) {
+              rateLine = "Stalled";
+            } else {
+              rateLine = `${perWeek.toFixed(1)} ${unit}/week`;
+              if (remaining > 0 && perWeek > 0) {
+                const weeksLeft = remaining / perWeek;
+                // Cap estimates at 1 year to avoid absurd projections
+                if (weeksLeft <= 52) {
+                  const finishEpoch = now + weeksLeft * 7 * 24 * 3600;
+                  const finishDate = new Date(finishEpoch * 1000);
+                  const dateStr = finishDate.toISOString().split("T")[0];
+                  estimateLine = `~${Math.ceil(weeksLeft)} weeks (est. ${dateStr})`;
+                } else {
+                  estimateLine = "Stalled - no realistic estimate";
+                }
+              }
             }
           }
 
