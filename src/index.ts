@@ -17,11 +17,16 @@ import { registerCardTools } from "./tools/cards.js";
 import { registerResources } from "./resources.js";
 import { registerPrompts } from "./prompts.js";
 
-// Clear unresolved mcpb template vars (e.g. "${user_config.anilist_token}")
-if (process.env.ANILIST_USERNAME?.startsWith("${")) {
-  process.env.ANILIST_USERNAME = "";
+// Sanitize env vars: clear unresolved templates, placeholders, or invalid values
+for (const key of ["ANILIST_USERNAME", "ANILIST_TOKEN"] as const) {
+  const val = process.env[key] ?? "";
+  if (!val || val.startsWith("${") || val === "undefined" || val === "null") {
+    process.env[key] = "";
+  }
 }
-if (process.env.ANILIST_TOKEN?.startsWith("${")) {
+// AniList tokens are long JWT-like strings (100+ chars)
+if (process.env.ANILIST_TOKEN && process.env.ANILIST_TOKEN.length < 30) {
+  console.warn("[ani-mcp] ANILIST_TOKEN looks invalid (too short), ignoring.");
   process.env.ANILIST_TOKEN = "";
 }
 

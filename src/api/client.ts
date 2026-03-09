@@ -101,11 +101,9 @@ export interface QueryOptions {
 
 /** Manages authenticated requests to the AniList GraphQL API */
 class AniListClient {
-  private token: string | undefined;
-
-  constructor() {
-    // Optional - unauthenticated requests still work for public data
-    this.token = process.env.ANILIST_TOKEN || undefined;
+  // Read token lazily so env sanitization in index.ts runs first
+  private get token(): string | undefined {
+    return process.env.ANILIST_TOKEN || undefined;
   }
 
   /** Execute a GraphQL query with caching and automatic retry */

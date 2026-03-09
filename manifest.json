@@ -42,7 +42,7 @@
     "anilist_token": {
       "type": "string",
       "title": "AniList Token",
-      "description": "Optional. Only needed for write operations (rate, update progress, etc.). Leave blank for read-only use.",
+      "description": "Optional. Your AniList API token for write features (rate, update progress, etc.).",
       "required": false,
       "sensitive": true
     }
