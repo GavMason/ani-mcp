@@ -43,7 +43,7 @@ export function makeMedia(
     studios: { nodes: [{ name: "Studio" }] },
     source: "ORIGINAL",
     isAdult: false,
-    coverImage: { large: null, extraLarge: null },
+    coverImage: { extraLarge: null },
     trailer: null,
     siteUrl: "https://anilist.co/anime/100",
     description: "A test anime.",

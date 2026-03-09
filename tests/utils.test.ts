@@ -200,17 +200,9 @@ describe("formatMediaSummary", () => {
   it("includes cover image when extraLarge is set", () => {
     const media = {
       ...makeMedia(),
-      coverImage: { large: "https://large.jpg", extraLarge: "https://xl.jpg" },
+      coverImage: { extraLarge: "https://xl.jpg" },
     };
     expect(formatMediaSummary(media)).toContain("Cover: https://xl.jpg");
-  });
-
-  it("falls back to large cover when extraLarge is null", () => {
-    const media = {
-      ...makeMedia(),
-      coverImage: { large: "https://large.jpg", extraLarge: null },
-    };
-    expect(formatMediaSummary(media)).toContain("Cover: https://large.jpg");
   });
 
   it("omits cover line when no images", () => {

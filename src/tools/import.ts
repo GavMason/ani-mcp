@@ -241,7 +241,7 @@ function kitsuEntriesToAniList(
           studios: { nodes: [] },
           source: null,
           isAdult: false,
-          coverImage: { large: null, extraLarge: null },
+          coverImage: { extraLarge: null },
           trailer: null,
           siteUrl: `https://kitsu.io/anime/${animeId}`,
           description: null,

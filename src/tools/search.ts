@@ -217,7 +217,7 @@ export function registerSearchTools(server: FastMCP): void {
         }
 
         // Cover image
-        const cover = m.coverImage?.extraLarge ?? m.coverImage?.large;
+        const cover = m.coverImage?.extraLarge;
         if (cover) lines.push("", `Cover: ${cover}`);
 
         // Trailer

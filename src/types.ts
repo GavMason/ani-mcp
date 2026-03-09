@@ -44,7 +44,7 @@ export interface AniListMedia {
   };
   source: string | null;
   isAdult: boolean;
-  coverImage: { large: string | null; extraLarge: string | null };
+  coverImage: { extraLarge: string | null };
   trailer: { id: string; site: string; thumbnail: string } | null;
   siteUrl: string;
   description: string | null;

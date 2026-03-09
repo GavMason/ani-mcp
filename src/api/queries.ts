@@ -40,7 +40,7 @@ const MEDIA_FRAGMENT = `
     }
     source
     isAdult
-    coverImage { large extraLarge }
+    coverImage { extraLarge }
     trailer { id site thumbnail }
     siteUrl
     description(asHtml: false)

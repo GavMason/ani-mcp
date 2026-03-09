@@ -155,7 +155,7 @@ export function formatMediaSummary(media: AniListMedia): string {
   if (studios) lines.push(`  Studio: ${studios}`);
 
   // Best available cover image
-  const cover = media.coverImage?.extraLarge ?? media.coverImage?.large;
+  const cover = media.coverImage?.extraLarge;
   if (cover) lines.push(`  Cover: ${cover}`);
 
   // Trailer link
