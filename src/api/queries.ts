@@ -71,7 +71,7 @@ export const SEARCH_MEDIA_QUERY = `
         search: $search
         type: $type
         genre_in: $genre
-        startDate_year: $year
+        seasonYear: $year
         format: $format
         isAdult: $isAdult
         sort: $sort
@@ -85,8 +85,8 @@ export const SEARCH_MEDIA_QUERY = `
 
 /** Full media lookup with relations and recommendations */
 export const MEDIA_DETAILS_QUERY = `
-  query MediaDetails($id: Int, $search: String) {
-    Media(id: $id, search: $search) {
+  query MediaDetails($id: Int, $search: String, $type: MediaType) {
+    Media(id: $id, search: $search, type: $type) {
       ...MediaFields
       relations {
         edges {
@@ -221,8 +221,8 @@ export const USER_STATS_QUERY = `
 
 /** Media recommendations for a given title */
 export const RECOMMENDATIONS_QUERY = `
-  query MediaRecommendations($id: Int, $search: String, $perPage: Int) {
-    Media(id: $id, search: $search) {
+  query MediaRecommendations($id: Int, $search: String, $type: MediaType, $perPage: Int) {
+    Media(id: $id, search: $search, type: $type) {
       id
       title { romaji english native }
       recommendations(sort: RATING_DESC, perPage: $perPage) {
@@ -275,7 +275,7 @@ export const GENRE_BROWSE_QUERY = `
       media(
         type: $type
         genre_in: $genre_in
-        startDate_year: $year
+        seasonYear: $year
         status: $status
         format: $format
         isAdult: $isAdult
@@ -290,8 +290,8 @@ export const GENRE_BROWSE_QUERY = `
 
 /** Staff and voice actors for a media title */
 export const STAFF_QUERY = `
-  query MediaStaff($id: Int, $search: String, $language: StaffLanguage) {
-    Media(id: $id, search: $search) {
+  query MediaStaff($id: Int, $search: String, $type: MediaType, $language: StaffLanguage) {
+    Media(id: $id, search: $search, type: $type) {
       id
       title { romaji english native }
       format
@@ -329,7 +329,7 @@ export const STAFF_QUERY = `
 /** Airing schedule for currently airing anime */
 export const AIRING_SCHEDULE_QUERY = `
   query AiringSchedule($id: Int, $search: String, $notYetAired: Boolean) {
-    Media(id: $id, search: $search) {
+    Media(id: $id, search: $search, type: ANIME) {
       id
       title { romaji english native }
       status
@@ -376,7 +376,7 @@ export const CHARACTER_SEARCH_QUERY = `
   query CharacterSearch($search: String!, $page: Int, $perPage: Int) {
     Page(page: $page, perPage: $perPage) {
       pageInfo { total hasNextPage }
-      characters(search: $search, sort: FAVOURITES_DESC) {
+      characters(search: $search, sort: SEARCH_MATCH) {
         id
         name { full native alternative }
         image { medium }
@@ -732,8 +732,8 @@ export const USER_PROFILE_QUERY = `
 
 /** Community reviews for a media title */
 export const MEDIA_REVIEWS_QUERY = `
-  query MediaReviews($id: Int, $search: String, $page: Int, $perPage: Int, $sort: [ReviewSort]) {
-    Media(id: $id, search: $search) {
+  query MediaReviews($id: Int, $search: String, $type: MediaType, $page: Int, $perPage: Int, $sort: [ReviewSort]) {
+    Media(id: $id, search: $search, type: $type) {
       id
       title { romaji english native }
       reviews(page: $page, perPage: $perPage, sort: $sort) {
