@@ -257,12 +257,21 @@ export function registerCardTools(server: FastMCP): void {
       }
 
       const stats = computeWrappedStats(yearEntries, year);
-      const avatarB64 = avatarUrl ? await fetchAvatarB64(avatarUrl) : null;
+
+      // Fetch avatar and cover images in parallel
+      const [avatarB64, topRatedCoverB64, controversialCoverB64] =
+        await Promise.all([
+          avatarUrl ? fetchAvatarB64(avatarUrl) : null,
+          stats.topRated?.coverUrl ? fetchAvatarB64(stats.topRated.coverUrl) : null,
+          stats.controversial?.coverUrl ? fetchAvatarB64(stats.controversial.coverUrl) : null,
+        ]);
 
       const svg = buildWrappedCardSvg({
         username,
         avatarB64,
         stats,
+        topRatedCoverB64,
+        controversialCoverB64,
       });
       const png = await svgToPng(svg);
       return imageContent({ buffer: png });
@@ -327,12 +336,25 @@ export function registerCardTools(server: FastMCP): void {
           ? scored.reduce((sum, e) => sum + e.score, 0) / scored.length
           : 0;
 
-      const topPicks = [...scored]
+      const topPickEntries = [...scored]
         .sort((a, b) => b.score - a.score)
-        .slice(0, 6)
-        .map((e) => ({ title: getTitle(e.media.title), score: e.score }));
+        .slice(0, 6);
 
-      const avatarB64 = avatarUrl ? await fetchAvatarB64(avatarUrl) : null;
+      // Fetch avatar and cover images in parallel
+      const [avatarB64, ...coverResults] = await Promise.all([
+        avatarUrl ? fetchAvatarB64(avatarUrl) : null,
+        ...topPickEntries.map((e) =>
+          e.media.coverImage.extraLarge
+            ? fetchAvatarB64(e.media.coverImage.extraLarge)
+            : null,
+        ),
+      ]);
+
+      const topPicks = topPickEntries.map((e, i) => ({
+        title: getTitle(e.media.title),
+        score: e.score,
+        coverB64: coverResults[i],
+      }));
 
       const data: SeasonalRecapData = {
         username,

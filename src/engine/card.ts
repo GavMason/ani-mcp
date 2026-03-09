@@ -72,6 +72,23 @@ function avatarCircle(
   ].join("\n");
 }
 
+// Rounded-rect cover art thumbnail
+function coverThumb(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  b64: string,
+  rx = 6,
+): string {
+  const clipId = `cover-${x}-${y}`;
+  return [
+    `<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}"/></clipPath>`,
+    `<image x="${x}" y="${y}" width="${w}" height="${h}" href="${b64}" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice"/>`,
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="none" stroke="${BRAND_BLUE}" stroke-opacity="0.2"/>`,
+  ].join("\n");
+}
+
 // === Watermark ===
 
 function watermark(cardW: number, cardH: number): string {
@@ -254,6 +271,8 @@ export interface WrappedCardData {
   username: string;
   avatarB64: string | null;
   stats: WrappedStats;
+  topRatedCoverB64?: string | null;
+  controversialCoverB64?: string | null;
 }
 
 /** Build an SVG year-in-review card */
@@ -306,7 +325,7 @@ export function buildWrappedCardSvg(data: WrappedCardData): string {
 
     // Highlights (right)
     sectionLabel("Highlights", 430, 162),
-    ...wrappedHighlights(stats, 430, 184),
+    ...wrappedHighlights(stats, 430, 184, data.topRatedCoverB64, data.controversialCoverB64),
 
     // Score distribution (bottom left)
     sectionLabel("Scores", 40, 420),
@@ -358,26 +377,41 @@ function wrappedGenreBars(
   });
 }
 
-// Highlight tiles for top rated and controversial
-function wrappedHighlights(stats: WrappedStats, x: number, y: number): string[] {
+// Highlight tiles for top rated and controversial (with optional cover art)
+function wrappedHighlights(
+  stats: WrappedStats,
+  x: number,
+  y: number,
+  topRatedCover?: string | null,
+  controversialCover?: string | null,
+): string[] {
   const lines: string[] = [];
   const w = 330;
+  const tileH = 52;
+  const coverW = 36;
+  const coverH = tileH - 8;
 
   if (stats.topRated) {
+    const hasCover = !!topRatedCover;
+    const textX = hasCover ? x + coverW + 16 : x + 12;
+    const maxTitleLen = hasCover ? 24 : 30;
     const title =
-      stats.topRated.title.length > 30
-        ? stats.topRated.title.slice(0, 28) + "..."
+      stats.topRated.title.length > maxTitleLen
+        ? stats.topRated.title.slice(0, maxTitleLen - 2) + "..."
         : stats.topRated.title;
     lines.push(
-      `<rect x="${x}" y="${y}" width="${w}" height="44" rx="8" fill="${BAR_BG}" opacity="0.5"/>`,
+      `<rect x="${x}" y="${y}" width="${w}" height="${tileH}" rx="8" fill="${BAR_BG}" opacity="0.5"/>`,
     );
-    lines.push(text("Highest Rated", x + 12, y + 16, 9, TEXT_DIM, "600"));
-    lines.push(text(title, x + 12, y + 34, 13, TEXT_PRIMARY, "600"));
+    if (hasCover) {
+      lines.push(coverThumb(x + 4, y + 4, coverW, coverH, topRatedCover));
+    }
+    lines.push(text("Highest Rated", textX, y + 18, 9, TEXT_DIM, "600"));
+    lines.push(text(title, textX, y + 38, 13, TEXT_PRIMARY, "600"));
     lines.push(
       text(
         `${stats.topRated.score}/10`,
         x + w - 12,
-        y + 30,
+        y + 34,
         16,
         BRAND_BLUE,
         "700",
@@ -386,23 +420,29 @@ function wrappedHighlights(stats: WrappedStats, x: number, y: number): string[] 
     );
   }
 
-  const cy = y + 56;
+  const cy = y + tileH + 8;
   if (stats.controversial) {
+    const hasCover = !!controversialCover;
+    const textX = hasCover ? x + coverW + 16 : x + 12;
+    const maxTitleLen = hasCover ? 24 : 30;
     const title =
-      stats.controversial.title.length > 30
-        ? stats.controversial.title.slice(0, 28) + "..."
+      stats.controversial.title.length > maxTitleLen
+        ? stats.controversial.title.slice(0, maxTitleLen - 2) + "..."
         : stats.controversial.title;
     const color = stats.controversial.direction === "above" ? "#06d6a0" : "#ef476f";
     lines.push(
-      `<rect x="${x}" y="${cy}" width="${w}" height="44" rx="8" fill="${BAR_BG}" opacity="0.5"/>`,
+      `<rect x="${x}" y="${cy}" width="${w}" height="${tileH}" rx="8" fill="${BAR_BG}" opacity="0.5"/>`,
     );
-    lines.push(text("Most Controversial", x + 12, cy + 16, 9, TEXT_DIM, "600"));
-    lines.push(text(title, x + 12, cy + 34, 13, TEXT_PRIMARY, "600"));
+    if (hasCover) {
+      lines.push(coverThumb(x + 4, cy + 4, coverW, coverH, controversialCover));
+    }
+    lines.push(text("Most Controversial", textX, cy + 18, 9, TEXT_DIM, "600"));
+    lines.push(text(title, textX, cy + 38, 13, TEXT_PRIMARY, "600"));
     lines.push(
       text(
         `${(stats.controversial.gap / 10).toFixed(1)} pts ${stats.controversial.direction}`,
         x + w - 12,
-        cy + 30,
+        cy + 34,
         11,
         color,
         "600",
@@ -411,7 +451,7 @@ function wrappedHighlights(stats: WrappedStats, x: number, y: number): string[] 
     );
   } else {
     lines.push(
-      `<rect x="${x}" y="${cy}" width="${w}" height="44" rx="8" fill="${BAR_BG}" opacity="0.3"/>`,
+      `<rect x="${x}" y="${cy}" width="${w}" height="${tileH}" rx="8" fill="${BAR_BG}" opacity="0.3"/>`,
     );
     lines.push(
       text("No controversial picks", x + 12, cy + 28, 12, TEXT_DIM),
@@ -473,7 +513,7 @@ export interface SeasonalRecapData {
   dropped: number;
   watching: number;
   avgScore: number;
-  topPicks: Array<{ title: string; score: number }>;
+  topPicks: Array<{ title: string; score: number; coverB64?: string | null }>;
 }
 
 /** Build an SVG seasonal recap card */
@@ -604,26 +644,41 @@ function statusRing(
   return lines.join("\n");
 }
 
-// Ranked list of top picks with scores
+// Ranked list of top picks with optional cover thumbnails
 function topPicksList(
-  picks: Array<{ title: string; score: number }>,
+  picks: Array<{ title: string; score: number; coverB64?: string | null }>,
   x: number,
   y: number,
 ): string[] {
   if (picks.length === 0) {
     return [text("No scored titles", x, y + 7, 11, TEXT_DIM)];
   }
+  const rowH = 34;
+  const gap = 2;
+  const coverW = 20;
+  const coverH = rowH - 6;
+  const w = 330;
+
   return picks.map((p, i) => {
-    const cy = y + i * 30;
+    const cy = y + i * (rowH + gap);
+    const cover = p.coverB64 ?? null;
+    const textX = cover ? x + coverW + 16 : x + 26;
+    const maxLen = cover ? 22 : 28;
     const title =
-      p.title.length > 28 ? p.title.slice(0, 26) + "..." : p.title;
+      p.title.length > maxLen ? p.title.slice(0, maxLen - 2) + "..." : p.title;
     const color = PALETTE[i % PALETTE.length];
-    return [
-      `<rect x="${x}" y="${cy}" width="330" height="26" rx="6" fill="${BAR_BG}" opacity="0.4"/>`,
-      text(`${i + 1}.`, x + 8, cy + 17, 11, TEXT_DIM, "600"),
-      text(title, x + 26, cy + 17, 12, TEXT_PRIMARY, "600"),
-      text(`${p.score}/10`, x + 318, cy + 17, 11, color, "600", "end"),
-    ].join("\n");
+    const parts = [
+      `<rect x="${x}" y="${cy}" width="${w}" height="${rowH}" rx="6" fill="${BAR_BG}" opacity="0.4"/>`,
+    ];
+    if (cover) {
+      parts.push(coverThumb(x + 3, cy + 3, coverW, coverH, cover, 4));
+    }
+    parts.push(
+      text(`${i + 1}.`, cover ? x + coverW + 8 : x + 8, cy + 22, 11, TEXT_DIM, "600"),
+      text(title, textX, cy + 22, 12, TEXT_PRIMARY, "600"),
+      text(`${p.score}/10`, x + w - 12, cy + 22, 11, color, "600", "end"),
+    );
+    return parts.join("\n");
   });
 }
 

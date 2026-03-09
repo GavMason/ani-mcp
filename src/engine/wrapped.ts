@@ -14,13 +14,14 @@ export interface WrappedStats {
   totalChapters: number;
   avgScore: number;
   scoredCount: number;
-  topRated: { title: string; score: number } | null;
+  topRated: { title: string; score: number; coverUrl: string | null } | null;
   controversial: {
     title: string;
     userScore: number;
     communityScore: number;
     gap: number;
     direction: "above" | "below";
+    coverUrl: string | null;
   } | null;
   topGenres: Array<{ name: string; count: number }>;
   scoreDistribution: Record<number, number>;
@@ -53,7 +54,11 @@ export function computeWrappedStats(
   let topRated: WrappedStats["topRated"] = null;
   if (scored.length > 0) {
     const top = [...scored].sort((a, b) => b.score - a.score)[0];
-    topRated = { title: getDisplayTitle(top.media.title), score: top.score };
+    topRated = {
+      title: getDisplayTitle(top.media.title),
+      score: top.score,
+      coverUrl: top.media.coverImage.extraLarge,
+    };
   }
 
   // Most controversial
@@ -75,6 +80,7 @@ export function computeWrappedStats(
       communityScore: cs,
       gap: withCommunity[0].gap,
       direction: c.score * USER_SCORE_SCALE > cs ? "above" : "below",
+      coverUrl: c.media.coverImage.extraLarge,
     };
   }
 
