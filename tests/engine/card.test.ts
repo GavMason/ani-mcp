@@ -249,6 +249,24 @@ describe("buildWrappedCardSvg", () => {
     expect(svg).toContain("500");
   });
 
+  it("fills all 4 stat badges for anime-only wrapped", () => {
+    const data: WrappedCardData = {
+      ...baseData,
+      stats: {
+        ...baseData.stats,
+        mangaCount: 0,
+        totalChapters: 0,
+      },
+    };
+    const svg = buildWrappedCardSvg(data);
+
+    // Should show Scored instead of empty badge
+    expect(svg).toContain("Scored");
+    expect(svg).toContain("35");
+    // No blank badge boxes
+    expect(svg).not.toMatch(/<rect[^>]*fill="#1e3044"[^>]*>[^<]*<rect[^>]*>[^<]*<text[^>]*><\/text>/);
+  });
+
   it("handles no controversial pick", () => {
     const data = {
       ...baseData,

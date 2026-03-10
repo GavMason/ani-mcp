@@ -280,26 +280,27 @@ export function buildWrappedCardSvg(data: WrappedCardData): string {
   const { stats } = data;
   const h = COMPAT_CARD_HEIGHT;
 
-  // Stat badges
-  const badgeStats: Array<{ label: string; value: string }> = [];
+  // Stat badges (pick best 4 from available stats)
+  const badgeCandidates: Array<{ label: string; value: string }> = [];
   if (stats.animeCount > 0)
-    badgeStats.push({ label: "Anime", value: String(stats.animeCount) });
+    badgeCandidates.push({ label: "Anime", value: String(stats.animeCount) });
   if (stats.mangaCount > 0)
-    badgeStats.push({ label: "Manga", value: String(stats.mangaCount) });
+    badgeCandidates.push({ label: "Manga", value: String(stats.mangaCount) });
   if (stats.scoredCount > 0)
-    badgeStats.push({ label: "Avg Score", value: stats.avgScore.toFixed(1) });
+    badgeCandidates.push({ label: "Avg Score", value: stats.avgScore.toFixed(1) });
   if (stats.totalEpisodes > 0)
-    badgeStats.push({
+    badgeCandidates.push({
       label: "Episodes",
       value: stats.totalEpisodes.toLocaleString(),
     });
   if (stats.totalChapters > 0)
-    badgeStats.push({
+    badgeCandidates.push({
       label: "Chapters",
       value: stats.totalChapters.toLocaleString(),
     });
-  // Pad to 4 if fewer
-  while (badgeStats.length < 4) badgeStats.push({ label: "", value: "" });
+  if (stats.scoredCount > 0 && badgeCandidates.length < 4)
+    badgeCandidates.push({ label: "Scored", value: String(stats.scoredCount) });
+  const badgeStats = badgeCandidates.slice(0, 4);
 
   const parts: string[] = [
     svgHeader(CARD_WIDTH, h),
