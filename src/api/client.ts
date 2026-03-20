@@ -376,7 +376,7 @@ export function warmCache(): void {
   const username = process.env.ANILIST_USERNAME;
   if (!username) return;
 
-  log("cache-warm", username);
+  log("cache-warm", "starting cache warm for default user");
   // Fire and forget - don't block startup
   Promise.all([
     anilistClient.fetchList(username, "ANIME"),
