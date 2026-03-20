@@ -1,5 +1,8 @@
 /** MCP Resources: expose user context without tool calls */
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "./api/client.js";
 import { USER_PROFILE_QUERY } from "./api/queries.js";
@@ -13,6 +16,10 @@ import { formatProfile } from "./tools/social.js";
 import { formatListEntry } from "./tools/lists.js";
 import type { UserProfileResponse } from "./types.js";
 import { getDefaultUsername, getScoreFormat } from "./utils.js";
+
+// Read version from package.json at startup
+const pkgPath = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+const PKG_VERSION: string = JSON.parse(readFileSync(pkgPath, "utf-8")).version;
 
 /** Register MCP resources on the server */
 export function registerResources(server: FastMCP): void {
@@ -131,7 +138,7 @@ export function registerResources(server: FastMCP): void {
       const lines: string[] = ["# ani-mcp Status", ""];
 
       // Server version
-      lines.push(`Version: 0.14.0`);
+      lines.push(`Version: ${PKG_VERSION}`);
 
       // Auth status
       const hasToken = Boolean(process.env.ANILIST_TOKEN);

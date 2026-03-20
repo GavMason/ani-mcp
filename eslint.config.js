@@ -7,6 +7,11 @@ export default tseslint.config(
   ...tseslint.configs.strict,
   prettierConfig,
   {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
+  {
     ignores: ["dist/"],
   }
 );
