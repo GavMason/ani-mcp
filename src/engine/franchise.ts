@@ -1,5 +1,7 @@
 /** Franchise graph traversal for watch order guidance. */
 
+import { MAX_DEPTH } from "../constants.js";
+
 /** Single entry in a franchise watch order */
 export interface FranchiseEntry {
   id: number;
@@ -32,8 +34,6 @@ export interface RelationNode {
 // Main formats in a franchise timeline
 const MAIN_FORMATS = new Set(["TV", "MOVIE", "ONA", "TV_SHORT"]);
 
-// Max BFS depth to prevent runaway traversal
-const MAX_DEPTH = 30;
 
 /** Find the earliest entry by following PREQUEL edges backward */
 function findRoot(

@@ -1,6 +1,11 @@
 /** Ranks candidates by content similarity to a source title */
 
 import type { AniListMedia } from "../types.js";
+import {
+  SIMILAR_GENRE_WEIGHT as GENRE_WEIGHT,
+  SIMILAR_TAG_WEIGHT as TAG_WEIGHT,
+  SIMILAR_REC_WEIGHT as REC_WEIGHT,
+} from "../constants.js";
 
 // === Types ===
 
@@ -9,12 +14,6 @@ export interface SimilarResult {
   similarityScore: number;
   reasons: string[];
 }
-
-// === Constants ===
-
-const GENRE_WEIGHT = 0.4;
-const TAG_WEIGHT = 0.3;
-const REC_WEIGHT = 0.3;
 
 // Non-spoiler tag names from a media entry
 function tagNames(media: AniListMedia): Set<string> {

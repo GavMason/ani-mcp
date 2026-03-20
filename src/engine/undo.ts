@@ -1,5 +1,7 @@
 /** Session-scoped undo stack for write operations. */
 
+import { MAX_UNDO } from "../constants.js";
+
 // === Types ===
 
 export interface EntrySnapshot {
@@ -28,7 +30,6 @@ export interface UndoRecord {
 
 // === Stack ===
 
-const MAX_UNDO = 20;
 const stack: UndoRecord[] = [];
 
 /** Push a record onto the undo stack, trimming oldest if full */

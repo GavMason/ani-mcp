@@ -3,6 +3,16 @@
 import type { AniListMedia } from "../types.js";
 import type { TasteProfile, WeightedItem } from "./taste.js";
 import type { MoodModifiers } from "./mood.js";
+import {
+  MATCHER_GENRE_WEIGHT as GENRE_WEIGHT,
+  MATCHER_TAG_WEIGHT as TAG_WEIGHT,
+  MATCHER_COMMUNITY_WEIGHT as COMMUNITY_WEIGHT,
+  MOOD_BOOST,
+  MOOD_PENALTY,
+  MIN_COMMUNITY_SCORE,
+  POPULARITY_PENALTY_MAX,
+  POPULARITY_CEILING,
+} from "../constants.js";
 
 // === Types ===
 
@@ -32,24 +42,6 @@ export interface ExplainResult {
   reasons: string[];
   moodFit: string | null;
 }
-
-// === Constants ===
-
-// How much each signal contributes to the final score
-const GENRE_WEIGHT = 0.5;
-const TAG_WEIGHT = 0.3;
-const COMMUNITY_WEIGHT = 0.2;
-
-// Mood boost/penalty as a multiplier on the final score
-const MOOD_BOOST = 1.3;
-const MOOD_PENALTY = 0.6;
-
-// Minimum community score (out of 100) to avoid recommending poorly-rated titles
-const MIN_COMMUNITY_SCORE = 50;
-
-// Diversity nudge: log-scale penalty for very popular titles (max 15%)
-const POPULARITY_PENALTY_MAX = 0.15;
-const POPULARITY_CEILING = 100_000;
 
 // === Matcher ===
 

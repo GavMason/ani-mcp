@@ -1,6 +1,12 @@
 /** Builds a weighted taste profile from a user's scored anime/manga list */
 
 import type { AniListMediaListEntry } from "../types.js";
+import {
+  MAX_TAGS,
+  MIN_TAG_COUNT,
+  BAYESIAN_PRIOR_WEIGHT,
+  BAYESIAN_PRIOR_COUNT,
+} from "../constants.js";
 import { dateToEpoch } from "../utils.js";
 
 // === Types ===
@@ -45,19 +51,9 @@ const MIN_ENTRIES = 5;
 // Entries scored 0 are unscored on AniList (not a real 0/10)
 const UNSCORED = 0;
 
-// Cap the number of tags returned to keep output focused
-const MAX_TAGS = 20;
-
-// Tags must appear in at least this many entries to rank
-const MIN_TAG_COUNT = 3;
-
 // Recency decay: entries from HALF_LIFE years ago get ~50% weight
 const DECAY_HALF_LIFE_YEARS = 3;
 const DECAY_LAMBDA = Math.LN2 / DECAY_HALF_LIFE_YEARS;
-
-// Bayesian smoothing: pull sparse observations toward a neutral prior
-const BAYESIAN_PRIOR_WEIGHT = 0.5;
-const BAYESIAN_PRIOR_COUNT = 3;
 
 // === Profile Builder ===
 
