@@ -289,3 +289,8 @@ Bug reports and feature requests: [GitHub Issues](https://github.com/gavxm/ani-m
 ## License
 
 [MIT](LICENSE)
+
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/gavxm-ani-mcp).
+
