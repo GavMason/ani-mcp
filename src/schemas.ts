@@ -1309,10 +1309,7 @@ export const ListExportInputSchema = z.object({
     .enum(["CURRENT", "COMPLETED", "PLANNING", "DROPPED", "PAUSED"])
     .optional()
     .describe("Filter by status (omit for all statuses)"),
-  format: z
-    .enum(["csv", "json"])
-    .default("csv")
-    .describe("Export format"),
+  format: z.enum(["csv", "json"]).default("csv").describe("Export format"),
 });
 
 export type ListExportInput = z.infer<typeof ListExportInputSchema>;

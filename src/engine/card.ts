@@ -49,7 +49,10 @@ export async function fetchAvatarB64(url: string): Promise<string | null> {
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     return `data:${contentType};base64,${buf.toString("base64")}`;
   } catch (err) {
-    log("avatar fetch failed", err instanceof Error ? err.message : String(err));
+    log(
+      "avatar fetch failed",
+      err instanceof Error ? err.message : String(err),
+    );
     return null;
   }
 }
@@ -295,7 +298,10 @@ export function buildWrappedCardSvg(data: WrappedCardData): string {
   if (stats.mangaCount > 0)
     badgeCandidates.push({ label: "Manga", value: String(stats.mangaCount) });
   if (stats.scoredCount > 0)
-    badgeCandidates.push({ label: "Avg Score", value: stats.avgScore.toFixed(1) });
+    badgeCandidates.push({
+      label: "Avg Score",
+      value: stats.avgScore.toFixed(1),
+    });
   if (stats.totalEpisodes > 0)
     badgeCandidates.push({
       label: "Episodes",
@@ -334,7 +340,13 @@ export function buildWrappedCardSvg(data: WrappedCardData): string {
 
     // Highlights (right)
     sectionLabel("Highlights", 430, 162),
-    ...wrappedHighlights(stats, 430, 184, data.topRatedCoverB64, data.controversialCoverB64),
+    ...wrappedHighlights(
+      stats,
+      430,
+      184,
+      data.topRatedCoverB64,
+      data.controversialCoverB64,
+    ),
 
     // Score distribution (bottom left)
     sectionLabel("Scores", 40, 420),
@@ -438,7 +450,8 @@ function wrappedHighlights(
       stats.controversial.title.length > maxTitleLen
         ? stats.controversial.title.slice(0, maxTitleLen - 2) + "..."
         : stats.controversial.title;
-    const color = stats.controversial.direction === "above" ? "#06d6a0" : "#ef476f";
+    const color =
+      stats.controversial.direction === "above" ? "#06d6a0" : "#ef476f";
     lines.push(
       `<rect x="${x}" y="${cy}" width="${w}" height="${tileH}" rx="8" fill="${BAR_BG}" opacity="0.5"/>`,
     );
@@ -462,16 +475,18 @@ function wrappedHighlights(
     lines.push(
       `<rect x="${x}" y="${cy}" width="${w}" height="${tileH}" rx="8" fill="${BAR_BG}" opacity="0.3"/>`,
     );
-    lines.push(
-      text("No controversial picks", x + 12, cy + 28, 12, TEXT_DIM),
-    );
+    lines.push(text("No controversial picks", x + 12, cy + 28, 12, TEXT_DIM));
   }
 
   return lines;
 }
 
 // Consumption stats (episodes/chapters) for bottom right
-function wrappedConsumption(stats: WrappedStats, x: number, y: number): string[] {
+function wrappedConsumption(
+  stats: WrappedStats,
+  x: number,
+  y: number,
+): string[] {
   const lines: string[] = [];
   const items: Array<{ label: string; value: string; icon: string }> = [];
 
@@ -592,11 +607,7 @@ export function buildSeasonalRecapCardSvg(data: SeasonalRecapData): string {
 }
 
 // Donut chart showing finished/dropped/watching split
-function statusRing(
-  cx: number,
-  cy: number,
-  data: SeasonalRecapData,
-): string {
+function statusRing(cx: number, cy: number, data: SeasonalRecapData): string {
   const r = 80;
   const strokeW = 20;
   const circumference = 2 * Math.PI * r;
@@ -629,8 +640,12 @@ function statusRing(
   }
 
   // Center label
-  lines.push(text(String(total), cx, cy + 6, 28, TEXT_PRIMARY, "800", "middle"));
-  lines.push(text("titles", cx, cy + 22, 10, TEXT_SECONDARY, "normal", "middle"));
+  lines.push(
+    text(String(total), cx, cy + 6, 28, TEXT_PRIMARY, "800", "middle"),
+  );
+  lines.push(
+    text("titles", cx, cy + 22, 10, TEXT_SECONDARY, "normal", "middle"),
+  );
 
   // Legend
   const legendY = cy + r + 30;
@@ -683,7 +698,14 @@ function topPicksList(
       parts.push(coverThumb(x + 3, cy + 3, coverW, coverH, cover, 4));
     }
     parts.push(
-      text(`${i + 1}.`, cover ? x + coverW + 8 : x + 8, cy + 22, 11, TEXT_DIM, "600"),
+      text(
+        `${i + 1}.`,
+        cover ? x + coverW + 8 : x + 8,
+        cy + 22,
+        11,
+        TEXT_DIM,
+        "600",
+      ),
       text(title, textX, cy + 22, 12, TEXT_PRIMARY, "600"),
       text(`${p.score}/10`, x + w - 12, cy + 22, 11, color, "600", "end"),
     );
@@ -956,7 +978,14 @@ function formatBar(
 ): string[] {
   const barHeight = 16;
   const rx = 8;
-  const colors = [BRAND_BLUE, "#06d6a0", "#ffd166", "#ef476f", "#b388ff", "#4dd0e1"];
+  const colors = [
+    BRAND_BLUE,
+    "#06d6a0",
+    "#ffd166",
+    "#ef476f",
+    "#b388ff",
+    "#4dd0e1",
+  ];
   const lines: string[] = [];
 
   // Rounded container clip

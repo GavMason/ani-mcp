@@ -18,7 +18,11 @@ import type { UserProfileResponse } from "./types.js";
 import { getDefaultUsername, getScoreFormat } from "./utils.js";
 
 // Read version from package.json at startup
-const pkgPath = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+const pkgPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "package.json",
+);
 const PKG_VERSION: string = JSON.parse(readFileSync(pkgPath, "utf-8")).version;
 
 /** Register MCP resources on the server */

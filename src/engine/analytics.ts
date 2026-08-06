@@ -125,11 +125,7 @@ export function computeCalibration(
   genreCalibrations.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 
   const tendency =
-    overallDelta >= 0.5
-      ? "high"
-      : overallDelta <= -0.5
-        ? "low"
-        : "balanced";
+    overallDelta >= 0.5 ? "high" : overallDelta <= -0.5 ? "low" : "balanced";
 
   return {
     overallDelta,

@@ -34,7 +34,6 @@ export interface RelationNode {
 // Main formats in a franchise timeline
 const MAIN_FORMATS = new Set(["TV", "MOVIE", "ONA", "TV_SHORT"]);
 
-
 /** Find the earliest entry by following PREQUEL edges backward */
 function findRoot(
   startId: number,

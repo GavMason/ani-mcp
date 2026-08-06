@@ -944,9 +944,7 @@ export function registerRecommendTools(server: FastMCP): void {
           }
           return results;
         }
-        const yearEntries = (
-          await Promise.all(types.map(fetchType))
-        ).flat();
+        const yearEntries = (await Promise.all(types.map(fetchType))).flat();
 
         if (yearEntries.length === 0) {
           return `${username} didn't complete any titles in ${year}.`;

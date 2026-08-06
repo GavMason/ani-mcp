@@ -289,9 +289,7 @@ export function registerListTools(server: FastMCP): void {
         );
 
         if (entries.length === 0) {
-          const statusLabel = args.status
-            ? ` with status ${args.status}`
-            : "";
+          const statusLabel = args.status ? ` with status ${args.status}` : "";
           return `${username} has no ${args.type.toLowerCase()} entries${statusLabel}.`;
         }
 
@@ -356,11 +354,13 @@ function exportRow(e: AniListMediaListEntry) {
 }
 
 /** Format a FuzzyDate to YYYY-MM-DD or partial */
-function fuzzyDateStr(d: {
-  year: number | null;
-  month: number | null;
-  day: number | null;
-} | null): string {
+function fuzzyDateStr(
+  d: {
+    year: number | null;
+    month: number | null;
+    day: number | null;
+  } | null,
+): string {
   if (!d || !d.year) return "";
   const y = String(d.year);
   const m = d.month ? String(d.month).padStart(2, "0") : "";

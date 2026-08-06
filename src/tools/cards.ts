@@ -3,10 +3,7 @@
 import type { FastMCP } from "fastmcp";
 import { imageContent, UserError } from "fastmcp";
 import { anilistClient } from "../api/client.js";
-import {
-  USER_PROFILE_QUERY,
-  COMPLETED_BY_DATE_QUERY,
-} from "../api/queries.js";
+import { USER_PROFILE_QUERY, COMPLETED_BY_DATE_QUERY } from "../api/queries.js";
 import type {
   UserProfileResponse,
   CompletedByDateResponse,
@@ -262,8 +259,12 @@ export function registerCardTools(server: FastMCP): void {
       const [avatarB64, topRatedCoverB64, controversialCoverB64] =
         await Promise.all([
           avatarUrl ? fetchAvatarB64(avatarUrl) : null,
-          stats.topRated?.coverUrl ? fetchAvatarB64(stats.topRated.coverUrl) : null,
-          stats.controversial?.coverUrl ? fetchAvatarB64(stats.controversial.coverUrl) : null,
+          stats.topRated?.coverUrl
+            ? fetchAvatarB64(stats.topRated.coverUrl)
+            : null,
+          stats.controversial?.coverUrl
+            ? fetchAvatarB64(stats.controversial.coverUrl)
+            : null,
         ]);
 
       const svg = buildWrappedCardSvg({
