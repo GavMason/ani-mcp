@@ -7,12 +7,12 @@
     "url": "https://github.com/gavxm/ani-mcp",
     "source": "github"
   },
-  "version": "0.15.7",
+  "version": "0.15.8",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ani-mcp",
-      "version": "0.15.7",
+      "version": "0.15.8",
       "transport": {
         "type": "stdio"
       },
